@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./forge.css";
 export const metadata: Metadata = {
-  title: { default: "SaaSathon Starter", template: "%s · SaaSathon Starter" },
-  description: "A small foundation for your next big idea.",
+  title: {
+    default: "ForgeCheck · Drawing analysis",
+    template: "%s · ForgeCheck",
+  },
+  description:
+    "Evidence-led manufacturing reviews. A clearer path from engineering drawing to production.",
 };
 export default function RootLayout({
   children,
