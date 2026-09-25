@@ -13,6 +13,7 @@ import type { Finding, ReviewStatus } from "@/lib/forge/types";
 
 export function IssueDetails({
   finding,
+  mode = "findings",
   index,
   count,
   onStatus,
@@ -20,6 +21,7 @@ export function IssueDetails({
   onFocus,
 }: {
   finding: Finding | undefined;
+  mode?: "findings" | "measurements";
   index: number;
   count: number;
   onStatus: (status: ReviewStatus) => void;
@@ -30,17 +32,22 @@ export function IssueDetails({
     return (
       <aside className="issue-panel empty-details">
         <CircleDot size={30} />
-        <h2>No finding selected</h2>
+        <h2>
+          {mode === "measurements"
+            ? "Review measurements here"
+            : "No finding selected"}
+        </h2>
         <p>
-          Select a finding on the drawing or in the review queue. Uploaded files
-          are ready for viewing; automated extraction is not connected yet.
+          {mode === "measurements"
+            ? "Use Extract with AI to read drawing callouts, or select an existing suggestion above. Check its dimensions, units, and source before confirming."
+            : "Select a finding on the drawing or in the review queue. For an uploaded drawing, open Measurements to extract and confirm inputs for the configured checks."}
         </p>
       </aside>
     );
   return (
     <aside className="issue-panel" aria-label="Selected issue details">
       <div className="panel-heading">
-        <span>ISSUE DETAILS</span>
+        <span>Finding details</span>
         <div>
           <button
             aria-label="Previous issue"
@@ -75,7 +82,7 @@ export function IssueDetails({
         <p className="issue-description">{finding.description}</p>
         <div className="evidence-box">
           <div className="detail-label">
-            <ShieldCheck size={14} /> DRAWING EVIDENCE
+            <ShieldCheck size={14} /> Drawing evidence
           </div>
           {finding.evidence.map((evidence, i) => (
             <div key={i}>
@@ -95,7 +102,9 @@ export function IssueDetails({
               </div>
               <span className="evidence-status">
                 {evidence.status === "verified"
-                  ? "Verified against the authored demo drawing"
+                  ? evidence.provenance === "engineer_confirmed"
+                    ? "Measurements confirmed by reviewer"
+                    : "Verified against the authored demo drawing"
                   : "Unverified — engineer confirmation needed"}
               </span>
             </div>
@@ -113,15 +122,14 @@ export function IssueDetails({
             ))}
           </ol>
         </section>
-        <section className="detail-section">
-          <h3>Rule & assumptions</h3>
-          <code>{finding.ruleId}</code>
+        <section className="detail-section rule-section">
+          <h3>Rule calculation</h3>
           <p className="calculation">{finding.calculation}</p>
-          <p>{finding.assumptions[0]}</p>
           <details>
-            <summary>View evidence limitations</summary>
-            {finding.assumptions.slice(1).map((a) => (
-              <p key={a}>{a}</p>
+            <summary>Rule, assumptions & limitations</summary>
+            <code>{finding.ruleId}</code>
+            {finding.assumptions.map((a, index) => (
+              <p key={index}>{a}</p>
             ))}
             <p>
               Profile: {finding.ruleProfileVersion}. A screening concern is not

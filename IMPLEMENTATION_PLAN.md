@@ -53,3 +53,48 @@ The first two milestones and verification milestone are complete for the local p
 
 Remaining work is the subsequent authenticated-storage/extraction phase described above.
 Printing uses the browser's print / Save as PDF facility; JSON export is also available.
+
+## Milestone 4 — live extraction and engineer confirmation
+
+1. Add a bounded OpenAI Responses adapter behind a validated Server Action. Keep the key on
+   the server, use structured outputs, explicit page consent, a timeout, and request limits.
+   Local development is usable without sign-in; production requires a verified, allowlisted account.
+2. Render up to three selected PDF pages and extract positioned text in the browser. Send only
+   those page images/text after consent. Treat every returned measurement/location as unverified.
+3. Add source previews and editable confirmation. Only confirmed dimensions enter deterministic
+   checks; locations require separate confirmation before a finding receives a drawing marker.
+4. Persist suggestions, decisions, extraction coverage and provenance locally. Update reports,
+   settings recalculation, and error/retry states. Preserve the existing fixture workflow.
+5. Verify contracts and failure cases, run all repository checks, then exercise an actual API
+   extraction of the public sample through the browser. No customer file is used for testing.
+
+This milestone uses bounded requests (three pages, 60 seconds); durable background jobs and
+account-isolated file storage remain the next deployment milestone. No database schema changes.
+
+### Milestone 4 verification complete
+
+- Live OpenAI extraction of the authored two-page PDF returned the four expected feature types.
+- Browser verified text-grounded source previews, page-2 navigation, explicit measurement and
+  location confirmation, rejection/reconfirmation, an unlocated finding, all four rule outputs,
+  marker-to-details selection, addressed status after refresh, and report provenance/coverage.
+- Confirmation panel checked at laptop width and narrow layout; no horizontal overflow at 390 px.
+- `pnpm lint`, `pnpm typecheck`, `pnpm test` (18 tests), `pnpm build`, and
+  `pnpm test:integration` pass. Integration tests use only the dedicated local Supabase stack.
+- `.env.local` remains ignored; the configured key is absent from generated browser assets.
+- Remaining validation: engineering-team drawings, scanned/rotated real-world accuracy, and
+  production storage/jobs/shared limiting. The three-page prototype scope remains explicit.
+
+## Milestone 5 — minimal workspace redesign
+
+- Replace the dark sidebar and repeated decorative containers with compact top navigation,
+  neutral surfaces, larger typography, and more space for the drawing and inspector.
+- Separate Measurements and Findings views. Use one measurement selector with previous/next
+  controls and a flat findings list. Preserve every dimension, source, status and action.
+- Keep file/attachment metadata, extraction coverage/notes, and rule assumptions accessible
+  in labelled disclosures. Retain report export, settings, project navigation and local storage.
+- Apply the same visual language to upload/extraction/settings dialogs and project lists.
+
+Verified at desktop and 390 px mobile widths with no horizontal overflow. Browser checks cover
+measurement selection/page navigation, editing and confirmation, findings filters, saved reviews,
+coverage notes, empty uploaded drawings, consent controls, and project navigation. Lint, strict
+typecheck, all 18 tests, production build and dedicated local Supabase integration checks pass.

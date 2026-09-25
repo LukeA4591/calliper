@@ -213,8 +213,9 @@ export function NewAnalysisDialog({
           />
         </label>
         <div className="local-note">
-          Your files stay in this browser. Automated drawing extraction is not
-          connected yet; use the sample to explore annotated findings.
+          Your files are saved in this browser. After upload, choose pages for
+          AI extraction and confirm their measurements before findings are
+          created.
         </div>
         {error && (
           <p className="form-error" role="alert">
@@ -340,9 +341,9 @@ export function SettingsDialog({
         </div>
         <div className="local-note">
           {analysis.profile.provenance} Values are in mm, independent of
-          displayed drawing units. Saving reruns sample rules and resets their
-          review status. Uploaded drawings require extraction before rules can
-          run.
+          displayed drawing units. Saving reruns confirmed-input checks and
+          resets their review status. Uploaded drawings require confirmed
+          measurements before rules can run.
         </div>
         {error && (
           <p className="form-error" role="alert">

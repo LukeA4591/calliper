@@ -11,6 +11,7 @@ export const defaultProfile: ProcessProfile = {
   tightTolerance: 0.025,
 };
 export type Candidate = {
+  id?: string;
   kind: "pocket" | "corner" | "hole" | "tolerance";
   evidence: Evidence;
 };
@@ -32,14 +33,16 @@ export function evaluateCandidates(
         : undefined;
     };
     const base = {
-      id: candidate.kind,
+      id: candidate.id ?? candidate.kind,
       ruleId: `CNC-${candidate.kind.toUpperCase()}-001`,
       status: "open" as const,
       evidence: [candidate.evidence],
       ruleProfileVersion: profile.version,
       assumptions: [
         profile.provenance,
-        "Drawing callouts are fixture-authored inputs; no CAD geometry or tool access has been measured.",
+        candidate.evidence.provenance === "engineer_confirmed"
+          ? "Measurements were confirmed by the reviewer after AI extraction. No CAD geometry, tool access, or process capability has been measured."
+          : "Drawing callouts are fixture-authored inputs; no CAD geometry or tool access has been measured.",
       ],
     };
     if (candidate.kind === "pocket") {

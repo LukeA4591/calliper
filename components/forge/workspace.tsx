@@ -2,29 +2,26 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Activity,
   ArrowDownToLine,
   ArrowRight,
   Box,
   Check,
-  ChevronRight,
   CircleDot,
-  ClipboardList,
-  Cpu,
-  FileSearch,
+  ScanLine,
   FileText,
   FolderClosed,
-  LayoutDashboard,
   LockKeyhole,
   Plus,
-  Settings2,
   SlidersHorizontal,
-  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createFixture, fixtureCandidates } from "@/lib/forge/fixture";
 import { evaluateCandidates } from "@/lib/forge/rules";
+import {
+  findingsFromExtraction,
+  updateCandidate,
+} from "@/lib/forge/extraction";
 import { loadProjects, saveProject } from "@/lib/forge/storage";
 import {
   filterFindings,
@@ -33,17 +30,22 @@ import {
   type Analysis,
   type Filters,
   type ReviewStatus,
+  type DrawingRegion,
+  type ExtractedCandidate,
 } from "@/lib/forge/types";
 import { PdfViewer } from "./pdf-viewer";
 import { IssueDetails } from "./issue-details";
 import { Modal, NewAnalysisDialog, SettingsDialog } from "./dialogs";
 import { PrintReport } from "./print-report";
+import { ExtractionReview, CandidateDetails } from "./extraction-review";
 
 type Project = { analysis: Analysis; pdf?: Blob; step?: Blob };
 export function ForgeWorkspace({
   initialAnalysis,
+  aiConfigured,
 }: {
   initialAnalysis: Analysis;
+  aiConfigured: boolean;
 }) {
   const [analysis, setAnalysis] = useState(initialAnalysis);
   const [projects, setProjects] = useState<Project[]>([
@@ -56,7 +58,16 @@ export function ForgeWorkspace({
   const [focusRequest, setFocusRequest] = useState<{
     id: string;
     sequence: number;
+    region?: DrawingRegion;
+    page?: number;
   } | null>(null);
+  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState<"findings" | "measurements">(
+    "findings",
+  );
+  const candidate = analysis.extraction?.candidates.find(
+    (c) => c.id === candidateId,
+  );
   const [filters, setFilters] = useState<Filters>({
     severity: "all",
     status: "all",
@@ -79,13 +90,31 @@ export function ForgeWorkspace({
 
   function openProject(project: Project, focus = true) {
     const next = project.analysis;
+    const nextCandidate =
+      next.mode === "uploaded" && !next.findings.length
+        ? (next.extraction?.candidates.find((c) => c.decision === "pending") ??
+          next.extraction?.candidates[0])
+        : undefined;
     setAnalysis(next);
+    setCandidateId(nextCandidate?.id ?? null);
+    setReviewMode(
+      next.mode === "uploaded" && !next.findings.length
+        ? "measurements"
+        : "findings",
+    );
     setSelectedId(next.findings[0]?.id ?? null);
     setFilters({ severity: "all", status: "all" });
     setFocusRequest(
-      focus && next.findings[0]
-        ? { id: next.findings[0].id, sequence: ++sequence.current }
-        : null,
+      nextCandidate
+        ? {
+            id: nextCandidate.id,
+            region: nextCandidate.originalEvidence.region,
+            page: nextCandidate.page,
+            sequence: ++sequence.current,
+          }
+        : focus && next.findings[0]
+          ? { id: next.findings[0].id, sequence: ++sequence.current }
+          : null,
     );
     setSource(
       next.mode === "fixture"
@@ -166,15 +195,28 @@ export function ForgeWorkspace({
       });
   }
   function select(id: string) {
+    setCandidateId(null);
+    setReviewMode("findings");
     setSelectedId(id);
     setFocusRequest({ id, sequence: ++sequence.current });
-    requestAnimationFrame(() =>
-      document.getElementById(`card-${id}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      }),
-    );
+  }
+  function selectCandidate(next: ExtractedCandidate | null) {
+    setCandidateId(next?.id ?? null);
+    setReviewMode(next ? "measurements" : "findings");
+    if (!next) {
+      setFilters({ severity: "all", status: "all" });
+      const first = analysis.findings[0];
+      setSelectedId(first?.id ?? null);
+      if (first)
+        setFocusRequest({ id: first.id, sequence: ++sequence.current });
+    }
+    if (next)
+      setFocusRequest({
+        id: next.id,
+        region: next.originalEvidence.region,
+        page: next.page,
+        sequence: ++sequence.current,
+      });
   }
   function setFilter(next: Filters) {
     setFilters(next);
@@ -217,146 +259,43 @@ export function ForgeWorkspace({
     openProject(project);
   }
   const nav = [
-    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
-    { id: "projects" as const, label: "Projects", icon: FolderClosed },
-    { id: "analysis" as const, label: "Drawing analysis", icon: FileSearch },
+    { id: "dashboard" as const, label: "Overview" },
+    { id: "projects" as const, label: "Projects" },
+    { id: "analysis" as const, label: "Drawing review" },
   ];
   return (
     <>
       <div className="forge-app no-print">
-        <aside className="navigation-rail">
+        <header className="app-navigation">
           <Link className="forge-brand" href="/" aria-label="ForgeCheck home">
-            <span className="brand-mark">
-              <Activity size={23} strokeWidth={2.6} />
-            </span>
-            <span>
-              Forge<span>Check</span>
-              <small>DESIGN. REVIEW. REFINE.</small>
-            </span>
+            <ScanLine size={22} strokeWidth={1.6} />
+            ForgeCheck
           </Link>
-          <div className="nav-workspace">
-            <span className="workspace-avatar">FC</span>
-            <div>
-              Engineering workspace<small>Local prototype</small>
-            </div>
-            <ChevronRight size={15} />
-          </div>
-          <p className="nav-label">WORKSPACE</p>
-          <nav>
+          <nav aria-label="Main navigation">
             {nav.map((item) => (
               <button
                 key={item.id}
-                aria-label={item.label}
+                aria-current={view === item.id ? "page" : undefined}
                 className={view === item.id ? "nav-item active" : "nav-item"}
                 onClick={() => setView(item.id)}
               >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-                {item.id === "analysis" && <i />}
+                {item.label}
               </button>
             ))}
-            <button
-              className="nav-item"
-              disabled
-              title="STEP geometry analysis is not implemented"
-            >
-              <Box size={18} />
-              <span>3D viewer</span>
-              <small>SOON</small>
-            </button>
-            <button
-              className="nav-item"
-              aria-label="Reports"
-              onClick={() => setModal("report")}
-            >
-              <ClipboardList size={18} />
-              <span>Reports</span>
-            </button>
           </nav>
-          <div className="rail-project">
-            <p className="nav-label">CURRENT PROJECT</p>
-            <div>
-              <span className="project-square">
-                <Box size={17} />
-              </span>
-              <span>
-                {analysis.projectName}
-                <small>
-                  FC-
-                  {analysis.mode === "fixture"
-                    ? "1042"
-                    : analysis.id.slice(0, 4).toUpperCase()}{" "}
-                  · Rev {analysis.revision}
-                </small>
-              </span>
-            </div>
-          </div>
-          <div className="rail-bottom">
-            <div className="prototype-card">
-              <span>
-                <Sparkles size={15} /> BUILT FOR BETTER PARTS
-              </span>
-              <p>
-                A second look.
-                <br />
-                Before the first cut.
-              </p>
-              <small>Preliminary manufacturing review</small>
-            </div>
-            <button className="nav-item" onClick={() => setModal("settings")}>
-              <Settings2 size={18} />
-              Settings
-            </button>
-            <div className="local-workspace">
-              <span className="user-avatar">EN</span>
-              <div>
-                Engineer
-                <small>
-                  <span /> Local workspace
-                </small>
-              </div>
-              <LockKeyhole size={14} />
-            </div>
-          </div>
-        </aside>
+          <span className="workspace-label">Local workspace</span>
+          <Button size="sm" onClick={() => setModal("new")}>
+            <Plus size={15} />
+            New analysis
+          </Button>
+        </header>
         <div className="workspace-body">
-          <header className="workspace-header">
-            <div className="breadcrumbs">
-              <button onClick={() => setView("projects")}>Projects</button>
-              <ChevronRight size={13} />
-              <span>{analysis.projectName}</span>
-              <ChevronRight size={13} />
-              <span>Rev {analysis.revision}</span>
-              <ChevronRight size={13} />
-              <strong>
-                {view === "analysis"
-                  ? "Drawing analysis"
-                  : view === "dashboard"
-                    ? "Dashboard"
-                    : "Projects"}
-              </strong>
-            </div>
-            <div className="header-actions">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setModal("report")}
-              >
-                <ArrowDownToLine size={14} />
-                Export report
-              </Button>
-              <Button size="sm" onClick={() => setModal("new")}>
-                <Plus size={15} />
-                New analysis
-              </Button>
-            </div>
-          </header>
           {view === "analysis" ? (
             <main id="main" className="analysis-workspace">
               <div className="analysis-heading">
                 <div>
                   <div className="eyebrow">
-                    MANUFACTURING REVIEW <span>/</span>{" "}
+                    Drawing review <span>/</span>{" "}
                     {analysis.mode === "fixture"
                       ? "FC-1042"
                       : analysis.id.slice(0, 8).toUpperCase()}
@@ -364,61 +303,130 @@ export function ForgeWorkspace({
                   <h1>
                     {analysis.projectName}
                     <span className="revision-tag">
-                      REV {analysis.revision}
+                      Rev {analysis.revision}
                     </span>
                   </h1>
                   <p>
-                    <span className="process-dot" />
                     3-axis CNC milling<span>·</span>
                     {analysis.material}
                     <span>·</span>
                     {analysis.units === "mm" ? "Millimetres" : "Inches"}
                   </p>
                 </div>
+                <div className="heading-actions">
+                  <Button variant="outline" onClick={() => setModal("report")}>
+                    <ArrowDownToLine size={15} />
+                    Export report
+                  </Button>
+                  <span className="local-save" role="status">
+                    <span />
+                    {storage}
+                  </span>
+                </div>
+              </div>
+              <div className="analysis-context">
+                <span>
+                  {analysis.mode === "fixture"
+                    ? "Sample analysis"
+                    : "Uploaded drawing"}
+                </span>
+                <details>
+                  <summary>Analysis information</summary>
+                  <div className="context-details">
+                    <p>
+                      {analysis.mode === "fixture"
+                        ? "Authored drawing and rule-based findings. No AI extraction. Engineer validation pending."
+                        : analysis.extraction
+                          ? "Measurements extracted with AI require reviewer confirmation before generating findings."
+                          : "Extract callouts with AI, then confirm dimensions and source locations."}
+                    </p>
+                    <p>
+                      PDF: {analysis.filename} · {analysis.pages.length} pages
+                    </p>
+                    <p>
+                      {analysis.stepFilename
+                        ? `STEP attachment: ${analysis.stepFilename}. Stored only; 3D geometry analysis is not available.`
+                        : "No STEP attachment. 3D geometry analysis is not available."}
+                    </p>
+                    <p>
+                      Created{" "}
+                      {new Date(analysis.createdAt).toLocaleDateString(
+                        "en-GB",
+                        { timeZone: "UTC" },
+                      )}{" "}
+                      · {analysis.profile.name}
+                    </p>
+                  </div>
+                </details>
+              </div>
+              <div className="review-navigation">
+                <div
+                  className="review-switch"
+                  role="group"
+                  aria-label="Review view"
+                >
+                  <button
+                    aria-pressed={reviewMode === "findings"}
+                    onClick={() => selectCandidate(null)}
+                  >
+                    Findings <span>{analysis.findings.length}</span>
+                  </button>
+                  {analysis.mode === "uploaded" && (
+                    <button
+                      aria-pressed={reviewMode === "measurements"}
+                      onClick={() => {
+                        setReviewMode("measurements");
+                        const next =
+                          analysis.extraction?.candidates.find(
+                            (c) => c.decision === "pending",
+                          ) ?? analysis.extraction?.candidates[0];
+                        if (next) selectCandidate(next);
+                      }}
+                    >
+                      Measurements{" "}
+                      <span>{analysis.extraction?.candidates.length ?? 0}</span>
+                    </button>
+                  )}
+                </div>
                 <button
                   className="profile-button"
+                  aria-label="Process settings"
                   onClick={() => setModal("settings")}
                 >
-                  <SlidersHorizontal size={16} />
-                  <span>
-                    Process settings<small>{analysis.profile.name}</small>
-                  </span>
-                  <ChevronRight size={14} />
+                  <SlidersHorizontal size={15} />
+                  Process settings<span>{analysis.profile.name}</span>
                 </button>
-              </div>
-              <div className="analysis-notice">
-                <span className="notice-icon">
-                  <FileSearch size={15} />
-                </span>
-                <p>
-                  {analysis.mode === "fixture" ? (
-                    <>
-                      <strong>Sample analysis</strong>
-                      <span>
-                        Authored drawing + rule-based findings. No AI
-                        extraction. Engineer validation pending.
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <strong>Drawing ready for review</strong>
-                      <span>
-                        Automated extraction is not connected. No manufacturing
-                        findings have been generated.
-                      </span>
-                    </>
-                  )}
-                </p>
-                <span className="local-save">
-                  <span />
-                  {storage}
-                </span>
               </div>
               {storageError && (
                 <div className="storage-error" role="alert">
                   {storageError}
                 </div>
               )}
+              {analysis.mode === "uploaded" &&
+                reviewMode === "measurements" && (
+                  <ExtractionReview
+                    key={analysis.id}
+                    analysis={analysis}
+                    source={source}
+                    configured={aiConfigured}
+                    selectedId={candidateId}
+                    onSelect={selectCandidate}
+                    onExtract={(extraction) => {
+                      persist({ ...analysis, extraction, findings: [] });
+                      setFilters({ severity: "all", status: "all" });
+                      setSelectedId(null);
+                      if (extraction.candidates[0])
+                        selectCandidate(extraction.candidates[0]);
+                      else {
+                        setCandidateId(null);
+                        setFocusRequest(null);
+                      }
+                      setNotice(
+                        `${extraction.candidates.length} suggestions ready for confirmation`,
+                      );
+                    }}
+                  />
+                )}
               <div className="review-layout">
                 <div className="drawing-column">
                   <div className="drawing-tabs">
@@ -450,6 +458,7 @@ export function ForgeWorkspace({
                       allFindings={analysis.findings}
                       selectedId={selectedId}
                       focusRequest={focusRequest}
+                      previewRegion={candidate?.originalEvidence.region}
                       onSelect={select}
                     />
                   ) : (
@@ -458,97 +467,136 @@ export function ForgeWorkspace({
                     </div>
                   )}
                 </div>
-                <IssueDetails
-                  finding={selected}
-                  index={selectedIndex}
-                  count={visible.length}
-                  onStatus={review}
-                  onNavigate={(direction) => {
-                    const next =
-                      visible[
-                        (selectedIndex + direction + visible.length) %
-                          visible.length
-                      ];
-                    if (next) select(next.id);
-                  }}
-                  onFocus={() => {
-                    if (selectedId) select(selectedId);
-                  }}
-                />
+                {candidate ? (
+                  <CandidateDetails
+                    key={`${candidate.id}:${candidate.decision}:${candidate.reviewedAt ?? ""}`}
+                    candidate={candidate}
+                    findingTitle={
+                      analysis.findings.find((f) => f.id === candidate.id)
+                        ?.title
+                    }
+                    onFocus={() => selectCandidate(candidate)}
+                    onFindings={() => {
+                      selectCandidate(null);
+                    }}
+                    onUpdate={(updated) => {
+                      const next = updateCandidate(analysis, updated);
+                      persist(next);
+                      setSelectedId(
+                        next.findings.find((f) => f.id === updated.id)?.id ??
+                          next.findings[0]?.id ??
+                          null,
+                      );
+                      setNotice(
+                        updated.decision === "confirmed"
+                          ? "Measurement confirmed and checks updated"
+                          : "Suggestion rejected",
+                      );
+                    }}
+                  />
+                ) : (
+                  <IssueDetails
+                    finding={reviewMode === "findings" ? selected : undefined}
+                    mode={reviewMode}
+                    index={selectedIndex}
+                    count={visible.length}
+                    onStatus={review}
+                    onNavigate={(direction) => {
+                      const next =
+                        visible[
+                          (selectedIndex + direction + visible.length) %
+                            visible.length
+                        ];
+                      if (next) select(next.id);
+                    }}
+                    onFocus={() => {
+                      if (selectedId) select(selectedId);
+                    }}
+                  />
+                )}
               </div>
-              <section
-                className="findings-section"
-                aria-label="Manufacturing findings"
-              >
-                <div className="findings-heading">
-                  <div>
-                    <h2>
-                      Review queue <span>{analysis.findings.length}</span>
-                    </h2>
-                    <p>
-                      {openCount} open <span>·</span>{" "}
-                      {analysis.findings.length - openCount} reviewed
-                    </p>
+              {reviewMode === "findings" && (
+                <section
+                  className="findings-section"
+                  aria-label="Manufacturing findings"
+                >
+                  <div className="findings-heading">
+                    <div>
+                      <h2>
+                        Review queue <span>{analysis.findings.length}</span>
+                      </h2>
+                      <p>
+                        {openCount} open <span>·</span>{" "}
+                        {analysis.findings.length - openCount} reviewed
+                      </p>
+                    </div>
+                    <div className="filter-controls">
+                      <label>
+                        <span className="sr-only">Filter severity</span>
+                        <SlidersHorizontal size={14} />
+                        <select
+                          value={filters.severity}
+                          onChange={(e) =>
+                            setFilter({
+                              ...filters,
+                              severity: e.target.value as Filters["severity"],
+                            })
+                          }
+                        >
+                          <option value="all">All severities</option>
+                          <option value="high">High priority</option>
+                          <option value="medium">Medium priority</option>
+                          <option value="low">Low priority</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span className="sr-only">Filter status</span>
+                        <select
+                          value={filters.status}
+                          onChange={(e) =>
+                            setFilter({
+                              ...filters,
+                              status: e.target.value as Filters["status"],
+                            })
+                          }
+                        >
+                          <option value="all">All statuses</option>
+                          <option value="open">Open</option>
+                          <option value="addressed">Addressed</option>
+                          <option value="dismissed">Dismissed</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                  <div className="filter-controls">
-                    <label>
-                      <span className="sr-only">Filter severity</span>
-                      <SlidersHorizontal size={14} />
-                      <select
-                        value={filters.severity}
-                        onChange={(e) =>
-                          setFilter({
-                            ...filters,
-                            severity: e.target.value as Filters["severity"],
-                          })
-                        }
-                      >
-                        <option value="all">All severities</option>
-                        <option value="high">High priority</option>
-                        <option value="medium">Medium priority</option>
-                        <option value="low">Low priority</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span className="sr-only">Filter status</span>
-                      <select
-                        value={filters.status}
-                        onChange={(e) =>
-                          setFilter({
-                            ...filters,
-                            status: e.target.value as Filters["status"],
-                          })
-                        }
-                      >
-                        <option value="all">All statuses</option>
-                        <option value="open">Open</option>
-                        <option value="addressed">Addressed</option>
-                        <option value="dismissed">Dismissed</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-                {visible.length ? (
-                  <div className="issue-cards">
-                    {visible.map((finding) => (
-                      <button
-                        id={`card-${finding.id}`}
-                        key={finding.id}
-                        className={`issue-card severity-${finding.severity} ${selectedId === finding.id ? "is-selected" : ""}`}
-                        aria-pressed={selectedId === finding.id}
-                        onClick={() => select(finding.id)}
-                      >
-                        <div>
+                  {visible.length ? (
+                    <div className="issue-cards">
+                      {visible.map((finding) => (
+                        <button
+                          id={`card-${finding.id}`}
+                          key={finding.id}
+                          className={`issue-card severity-${finding.severity} ${selectedId === finding.id ? "is-selected" : ""}`}
+                          aria-pressed={selectedId === finding.id}
+                          onClick={() => select(finding.id)}
+                        >
                           <span className="issue-number">
                             {analysis.findings.findIndex(
                               (f) => f.id === finding.id,
                             ) + 1}
                           </span>
+                          <div className="issue-row-body">
+                            <h3>{finding.title}</h3>
+                            <p>{finding.evidence[0]?.text}</p>
+                          </div>
                           <span
                             className={`severity-badge severity-${finding.severity}`}
                           >
                             <i />
                             {finding.severity}
+                          </span>
+                          <span className="issue-location">
+                            {finding.evidence[0]?.region
+                              ? `Page ${finding.evidence[0].region.page}`
+                              : "No verified location"}
                           </span>
                           <span
                             className={`card-status status-${finding.status}`}
@@ -560,73 +608,67 @@ export function ForgeWorkspace({
                             )}
                             {finding.status}
                           </span>
-                        </div>
-                        <h3>{finding.title}</h3>
-                        <p>{finding.evidence[0]?.text}</p>
-                        <footer>
-                          <span>
-                            {finding.evidence[0]?.region
-                              ? `Page ${finding.evidence[0].region.page}`
-                              : "No verified location"}
-                          </span>
-                          <ArrowRight size={14} />
-                        </footer>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-findings">
-                    <CircleDot size={22} />
-                    <div>
-                      <strong>
-                        {analysis.findings.length
-                          ? "No findings match these filters"
-                          : "Your drawing is ready. Findings need evidence."}
-                      </strong>
-                      <p>
-                        {analysis.findings.length
-                          ? "Try a different severity or review status."
-                          : "Explore the sample analysis to see drawing annotations and the review workflow."}
-                      </p>
+                          <ArrowRight className="row-arrow" size={16} />
+                        </button>
+                      ))}
                     </div>
-                    <button
-                      className="text-button"
-                      onClick={() =>
-                        analysis.findings.length
-                          ? setFilter({ severity: "all", status: "all" })
-                          : void showDemo()
-                      }
-                    >
-                      {analysis.findings.length
-                        ? "Clear filters"
-                        : "Open sample"}
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-                )}
-              </section>
+                  ) : (
+                    <div className="empty-findings">
+                      <CircleDot size={22} />
+                      <div>
+                        <strong>
+                          {analysis.findings.length
+                            ? "No findings match these filters"
+                            : "Your drawing is ready. Findings need evidence."}
+                        </strong>
+                        <p>
+                          {analysis.findings.length
+                            ? "Try a different severity or review status."
+                            : analysis.mode === "uploaded"
+                              ? "Extract and confirm measurements above. Only confirmed inputs are screened; zero findings is not a manufacturability verdict."
+                              : "No concerns cross the current tooling thresholds."}
+                        </p>
+                      </div>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          analysis.findings.length
+                            ? setFilter({ severity: "all", status: "all" })
+                            : void showDemo()
+                        }
+                      >
+                        {analysis.findings.length
+                          ? "Clear filters"
+                          : "Open sample"}
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
               <footer className="workspace-footer">
                 <span>
                   <LockKeyhole size={12} /> Preliminary review · engineering
                   sign-off required
                 </span>
                 <span>
-                  ForgeCheck <span className="footer-dot">/</span> From drawing
-                  to better decisions.
+                  Files and review decisions are saved in this browser.
                 </span>
               </footer>
             </main>
           ) : (
             <main id="main" className="projects-page">
-              <div className="eyebrow">YOUR ENGINEERING WORKSPACE</div>
-              <h1>
-                {view === "dashboard"
-                  ? "A clearer path to production."
-                  : "Your projects"}
-              </h1>
+              <div className="eyebrow">Workspace</div>
+              <h1>{view === "dashboard" ? "Overview" : "Your projects"}</h1>
               <p>
                 Drawings, findings, and review decisions. Saved in this browser.
               </p>
+              <div className="page-actions">
+                <Button variant="outline" onClick={() => setModal("report")}>
+                  <ArrowDownToLine size={15} />
+                  Export current report
+                </Button>
+              </div>
               <div className="dashboard-stats">
                 <div>
                   <FolderClosed size={20} />
@@ -685,9 +727,8 @@ export function ForgeWorkspace({
                 ))}
               </div>
               <div className="revision-demo">
-                <Cpu size={24} />
                 <div>
-                  <h2>See what changes in revision B</h2>
+                  <h2>Compare sample revisions</h2>
                   <p>
                     The revised fixture changes three dimensions. The locating
                     tolerance remains for review.
@@ -772,7 +813,7 @@ export function ForgeWorkspace({
                         fixtureCandidates(analysis.fixtureRevision || "a"),
                         profile,
                       )
-                    : [],
+                    : findingsFromExtraction({ ...analysis, profile }),
               };
               persist(next);
               setFilters({ severity: "all", status: "all" });
@@ -783,7 +824,9 @@ export function ForgeWorkspace({
                   : null,
               );
               setModal(null);
-              setNotice("Tooling profile saved and sample rules updated");
+              setNotice(
+                "Tooling profile saved and confirmed-input rules updated",
+              );
             }}
           />
         )}

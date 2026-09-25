@@ -16,14 +16,24 @@ import {
 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { getPdfEngine } from "@/lib/forge/pdf";
-import { rotatedRegion, type Finding } from "@/lib/forge/types";
+import {
+  rotatedRegion,
+  type Finding,
+  type DrawingRegion,
+} from "@/lib/forge/types";
 
 type Props = {
   source: string;
   findings: Finding[];
   allFindings: Finding[];
   selectedId: string | null;
-  focusRequest: { id: string; sequence: number } | null;
+  focusRequest: {
+    id: string;
+    sequence: number;
+    region?: DrawingRegion;
+    page?: number;
+  } | null;
+  previewRegion?: DrawingRegion;
   onSelect: (id: string) => void;
 };
 
@@ -33,6 +43,7 @@ export function PdfViewer({
   allFindings,
   selectedId,
   focusRequest,
+  previewRegion,
   onSelect,
 }: Props) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
@@ -201,11 +212,16 @@ export function PdfViewer({
     const evidence = finding?.evidence.find(
       (e) => e.region && e.status === "verified",
     );
-    if (!evidence?.region) {
+    const region =
+      focusRequest.region ??
+      evidence?.region ??
+      (focusRequest.page
+        ? { page: focusRequest.page, x: 0, y: 0, width: 1, height: 1 }
+        : undefined);
+    if (!region) {
       renderedFocus.current = focusRequest.sequence;
       return;
     }
-    const region = evidence.region;
     let cancelled = false;
     document.getPage(region.page).then((pdfPage) => {
       if (cancelled) return;
@@ -283,6 +299,10 @@ export function PdfViewer({
         index,
       })),
   );
+  const preview =
+    previewRegion?.page === page
+      ? rotatedRegion(previewRegion, pageSize.rotation)
+      : undefined;
 
   return (
     <section className="drawing-viewer" aria-label="PDF drawing viewer">
@@ -405,6 +425,20 @@ export function PdfViewer({
               }}
             >
               <div ref={canvasHost} className="pdf-canvas" />
+              {annotations && !rendering && preview && (
+                <div
+                  className="source-preview"
+                  aria-label="Suggested source preview; verify before confirming"
+                  style={{
+                    left: `${preview.x * 100}%`,
+                    top: `${preview.y * 100}%`,
+                    width: `${preview.width * 100}%`,
+                    height: `${preview.height * 100}%`,
+                  }}
+                >
+                  <span>Source preview</span>
+                </div>
+              )}
               {annotations &&
                 !rendering &&
                 pageMarkers.map(({ finding, region, index }) => (

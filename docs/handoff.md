@@ -251,6 +251,20 @@ and revised fixtures, report preview, print/PDF, and JSON export. See the root R
 IMPLEMENTATION_PLAN.md for the architecture, run commands, checks, and explicit limitations.
 
 The original backend remains Supabase for the starter authentication/ideas example. ForgeCheck
-uses IndexedDB for this local milestone. No customer document upload service or AI extraction is
-connected. Uploaded drawings deliberately receive no fixture findings. STEP is an attachment
-only. Authenticated document storage and validated extraction are the next implementation phase.
+uses IndexedDB for the local workflow. Uploaded drawings deliberately receive no fixture findings.
+STEP is an attachment only.
+
+### Live extraction update — 26 September 2026
+
+OpenAI extraction is connected through a validated Next.js Server Action. Users explicitly choose
+and consent to sending up to three page images and embedded text. Suggestions include grounded
+PDF-text references or clearly unverified visual locations. Reviewers can edit measurements/units,
+confirm them, confirm source locations separately, or reject incorrect suggestions. Confirmed
+inputs generate deterministic findings; original suggestions, decisions, coverage and provenance
+persist locally and appear in exports. The default fixture remains clearly labelled and unchanged.
+
+The live sample test returned all four expected feature types. Production extraction requires a
+verified Supabase account on the server allowlist. Local development supports same-origin localhost.
+Timeouts, refusals, bad responses and usage limits have explicit error paths. No new database tables
+or customer document store were introduced. Real engineering drawing validation, authenticated
+storage, durable background jobs/shared rate limits and STEP analysis remain subsequent work.

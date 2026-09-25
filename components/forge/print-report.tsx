@@ -16,8 +16,45 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
       <p>
         {analysis.mode === "fixture"
           ? "SAMPLE ANALYSIS: authored drawing inputs and deterministic demo rules. No AI extraction."
-          : "Uploaded drawing: automated extraction is not connected. No findings generated."}
+          : analysis.extraction
+            ? "Uploaded drawing: AI extraction followed by reviewer confirmation and deterministic checks."
+            : "Uploaded drawing: extraction has not been run. No manufacturing screening completed."}
       </p>
+      {analysis.extraction && (
+        <section>
+          <h3>Extraction scope and review</h3>
+          <p>
+            {analysis.extraction.provider} · {analysis.extraction.model} ·{" "}
+            {analysis.extraction.createdAt}
+          </p>
+          <p>
+            Pages sent: {analysis.extraction.pages.join(", ")} of{" "}
+            {analysis.pages.length}. Only pockets, internal radii, blind holes
+            and bilateral tolerances are screened. Unsent pages and unconfirmed
+            measurements are not evaluated. Zero findings does not establish
+            manufacturability.
+          </p>
+          <ul>
+            {analysis.extraction.warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+          {analysis.extraction.candidates.map((c) => (
+            <p key={c.id}>
+              <strong>{c.label}</strong> · page {c.page} · {c.decision}.{" "}
+              {c.evidence.text} ·{" "}
+              {Object.entries(c.evidence.measurements)
+                .map(([key, m]) => `${key}: ${m.value} ${m.unit}`)
+                .join(", ")}
+              .{" "}
+              {c.decision === "confirmed" && !c.evidence.region
+                ? "Location not confirmed."
+                : ""}{" "}
+              {c.notes.join(" ")}
+            </p>
+          ))}
+        </section>
+      )}
       <p>
         Profile: {analysis.profile.version}. {analysis.profile.provenance}
       </p>

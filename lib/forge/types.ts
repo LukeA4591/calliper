@@ -20,6 +20,9 @@ export const evidenceSchema = z.object({
   region: regionSchema.optional(),
   text: z.string(),
   status: z.enum(["verified", "extracted_unverified", "inferred"]),
+  provenance: z
+    .enum(["authored_fixture", "engineer_confirmed", "ai_extracted"])
+    .optional(),
   measurements: z.record(
     z.string(),
     z.object({ value: z.number(), unit: z.string() }),
@@ -48,6 +51,34 @@ export const profileSchema = z.object({
   minimumCutterDiameter: z.number().min(0.1).max(50),
   tightTolerance: z.number().min(0.001).max(1),
 });
+export const featureKindSchema = z.enum([
+  "pocket",
+  "corner",
+  "hole",
+  "tolerance",
+]);
+export const extractedCandidateSchema = z.object({
+  id: z.string(),
+  kind: featureKindSchema,
+  label: z.string(),
+  page: z.number().int().positive(),
+  notes: z.array(z.string()),
+  locationSource: z.enum(["pdf_text", "vision", "none"]),
+  decision: z.enum(["pending", "confirmed", "rejected"]),
+  evidence: evidenceSchema,
+  originalEvidence: evidenceSchema,
+  reviewedAt: z.string().optional(),
+});
+export const extractionSchema = z.object({
+  provider: z.literal("OpenAI"),
+  model: z.string(),
+  createdAt: z.string(),
+  pages: z.array(z.number().int().positive()),
+  warnings: z.array(z.string()),
+  candidates: z.array(extractedCandidateSchema),
+});
+export type ExtractedCandidate = z.infer<typeof extractedCandidateSchema>;
+export type Extraction = z.infer<typeof extractionSchema>;
 export const analysisSchema = z.object({
   id: z.string(),
   projectName: z.string(),
@@ -63,6 +94,7 @@ export const analysisSchema = z.object({
   fixtureRevision: z.enum(["a", "b"]).optional(),
   profile: profileSchema,
   findings: z.array(findingSchema),
+  extraction: extractionSchema.optional(),
   pages: z.array(
     z.object({
       width: z.number().positive(),
