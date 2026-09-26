@@ -9,13 +9,22 @@ import { load } from "cheerio";
 
 async function main() {
   // Check the running service, not just config.toml: it may not have been restarted.
-  const smtpHost = execFileSync("docker", [
-    "inspect", "supabase_auth_saasathon-starter", "--format",
-    '{{range .Config.Env}}{{println .}}{{end}}',
-  ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
-    .split("\n").find((line) => line.startsWith("GOTRUE_SMTP_HOST="))?.split("=")[1];
+  const smtpHost = execFileSync(
+    "docker",
+    [
+      "inspect",
+      "supabase_auth_saasathon-starter",
+      "--format",
+      "{{range .Config.Env}}{{println .}}{{end}}",
+    ],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+  )
+    .split("\n")
+    .find((line) => line.startsWith("GOTRUE_SMTP_HOST="))
+    ?.split("=")[1];
   assert.ok(
-    smtpHost === "supabase_inbucket_saasathon-starter" || smtpHost === "supabase_mailpit_saasathon-starter",
+    smtpHost === "supabase_inbucket_saasathon-starter" ||
+      smtpHost === "supabase_mailpit_saasathon-starter",
     "Integration tests require the local inbox. Run pnpm email:configure local, then pnpm supabase stop and pnpm db:start.",
   );
   const local = JSON.parse(
@@ -236,6 +245,19 @@ async function main() {
       for (const [name, value] of Object.entries(fields)) body.set(name, value);
       return request(path, { method: "POST", body });
     }
+    async function assertPublicLanding() {
+      const response = await request("/");
+      assert.equal(response.status, 200);
+      const $ = load(await response.text());
+      assert.equal(
+        $("#landing-title").length,
+        1,
+        "Signed-out visitors see the landing page",
+      );
+      assert.ok($('a[href="/register"]').length > 0);
+      assert.equal($('[aria-label="Project library"]').length, 0);
+    }
+    await assertPublicLanding();
     let response = await request("/ideas");
     assert.equal(response.status, 307);
     assert.equal(response.headers.get("location"), "/login");
@@ -317,6 +339,7 @@ async function main() {
     response = await submit("/ideas", html, "header form", {});
     assert.equal(response.status, 303);
     assert.equal((await request("/ideas")).headers.get("location"), "/login");
+    await assertPublicLanding();
 
     async function emailLink(email: string, kind: "email" | "recovery") {
       for (let attempt = 0; attempt < 40; attempt++) {
@@ -376,7 +399,7 @@ async function main() {
           "Verify your email before signing in",
         ),
       );
-      assert.equal((await request("/")).headers.get("location"), "/login");
+      await assertPublicLanding();
       const link = await emailLink(email, "email");
       const confirmHtml = await (await request(link)).text();
       // GET does not consume a verification link (email scanner/prefetch safe).
@@ -399,7 +422,7 @@ async function main() {
       // A new browser must be able to sign in with a password without any
       // cookies from email verification or the legacy code flow.
       cookies.clear();
-      assert.equal((await request("/")).headers.get("location"), "/login");
+      await assertPublicLanding();
       const passwordLogin = await submit(
         "/login",
         await (await request("/login")).text(),
@@ -414,7 +437,16 @@ async function main() {
           .some((cookie) => cookie.includes("auth-token")),
       );
       const destination = role === "manufacturer" ? "/manufacturer" : "/";
-      assert.equal((await request(destination)).status, 200);
+      const workspace = await request(destination);
+      assert.equal(workspace.status, 200);
+      const workspaceHtml = load(await workspace.text());
+      assert.equal(
+        workspaceHtml("#landing-title").length,
+        0,
+        "Signed-in users skip the landing page",
+      );
+      if (role === "designer")
+        assert.equal(workspaceHtml('[aria-label="Project library"]').length, 1);
       // A second request also retains the password-created session.
       assert.equal((await request(destination)).status, 200);
       return { email, id: user.id };

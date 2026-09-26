@@ -111,7 +111,7 @@ pnpm dev
 ```
 
 Keep this terminal running and open [localhost:3000](http://localhost:3000).
-You should land on **Sign in**. Choose **Create an account**, select Designer or Manufacturer,
+Signed-out visitors see the public Calliper landing page. Choose **Get started**, select Designer or Manufacturer,
 and verify your email as described below. Designers land on **Projects**: choose **New analysis** to upload your first drawing. Manufacturers land on their
 business onboarding/dashboard.
 

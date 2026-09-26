@@ -1,10 +1,13 @@
 import { ForgeWorkspace } from "@/components/forge/workspace";
 import { analysisSchema } from "@/lib/forge/types";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { LandingPage } from "@/components/landing/landing-page";
 export const dynamic = "force-dynamic";
 export default async function Home() {
-  const { supabase, userId, email, role } = await requireUser();
+  const account = await getCurrentUser();
+  if (!account) return <LandingPage />;
+  const { supabase, userId, email, role } = account;
   if (role === "manufacturer") redirect("/manufacturer");
   const { data, error } = await supabase
     .from("analyses")
