@@ -9,11 +9,9 @@ import {
   CircleDot,
   ScanLine,
   FileText,
-  FolderClosed,
   LockKeyhole,
   Plus,
   SlidersHorizontal,
-  TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createFixture, fixtureCandidates } from "@/lib/forge/fixture";
@@ -39,7 +37,7 @@ import { Modal, NewAnalysisDialog, SettingsDialog } from "./dialogs";
 import { PrintReport } from "./print-report";
 import { ExtractionReview, CandidateDetails } from "./extraction-review";
 
-type Project = { analysis: Analysis; pdf?: Blob; step?: Blob };
+import { ProjectLibrary, type Project } from "./project-views";
 export function ForgeWorkspace({
   initialAnalysis,
   aiConfigured,
@@ -75,9 +73,7 @@ export function ForgeWorkspace({
   const [modal, setModal] = useState<"new" | "settings" | "report" | null>(
     null,
   );
-  const [view, setView] = useState<"analysis" | "dashboard" | "projects">(
-    "analysis",
-  );
+  const [view, setView] = useState<"analysis" | "projects">("projects");
   const [storage, setStorage] = useState("Loading local projects…");
   const [notice, setNotice] = useState("");
   const [storageError, setStorageError] = useState("");
@@ -88,7 +84,7 @@ export function ForgeWorkspace({
   const selectedIndex = visible.findIndex((f) => f.id === selectedId);
   const openCount = analysis.findings.filter((f) => f.status === "open").length;
 
-  function openProject(project: Project, focus = true) {
+  function openProject(project: Project) {
     const next = project.analysis;
     const nextCandidate =
       next.mode === "uploaded" && !next.findings.length
@@ -112,7 +108,7 @@ export function ForgeWorkspace({
             page: nextCandidate.page,
             sequence: ++sequence.current,
           }
-        : focus && next.findings[0]
+        : next.findings[0]
           ? { id: next.findings[0].id, sequence: ++sequence.current }
           : null,
     );
@@ -125,32 +121,16 @@ export function ForgeWorkspace({
     );
     setView("analysis");
     setModal(null);
-    try {
-      localStorage.setItem("forgecheck-active", next.id);
-    } catch {
-      /* Project data still lives in IndexedDB. */
-    }
   }
   useEffect(() => {
     let cancelled = false;
     loadProjects()
       .then(async (saved) => {
         if (cancelled) return;
-        const activeId = (() => {
-          try {
-            return localStorage.getItem("forgecheck-active");
-          } catch {
-            return null;
-          }
-        })();
         const all = saved.some((p) => p.analysis.id === initialAnalysis.id)
           ? saved
           : [{ analysis: initialAnalysis }, ...saved];
         setProjects(all);
-        const active =
-          all.find((p) => p.analysis.id === activeId) ||
-          all.find((p) => p.analysis.id === initialAnalysis.id);
-        if (active) openProject(active, false);
         if (!saved.some((p) => p.analysis.id === initialAnalysis.id))
           await saveProject(initialAnalysis);
         if (!cancelled) setStorage("Saved on this device");
@@ -258,11 +238,6 @@ export function ForgeWorkspace({
     }
     openProject(project);
   }
-  const nav = [
-    { id: "dashboard" as const, label: "Overview" },
-    { id: "projects" as const, label: "Projects" },
-    { id: "analysis" as const, label: "Drawing review" },
-  ];
   return (
     <>
       <div className="forge-app no-print">
@@ -272,16 +247,13 @@ export function ForgeWorkspace({
             ForgeCheck
           </Link>
           <nav aria-label="Main navigation">
-            {nav.map((item) => (
-              <button
-                key={item.id}
-                aria-current={view === item.id ? "page" : undefined}
-                className={view === item.id ? "nav-item active" : "nav-item"}
-                onClick={() => setView(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
+            <button
+              aria-current={view === "projects" ? "page" : undefined}
+              className={view === "projects" ? "nav-item active" : "nav-item"}
+              onClick={() => setView("projects")}
+            >
+              Projects
+            </button>
           </nav>
           <span className="workspace-label">Local workspace</span>
           <Button size="sm" onClick={() => setModal("new")}>
@@ -295,7 +267,10 @@ export function ForgeWorkspace({
               <div className="analysis-heading">
                 <div>
                   <div className="eyebrow">
-                    Drawing review <span>/</span>{" "}
+                    <button onClick={() => setView("projects")}>
+                      Projects
+                    </button>
+                    <span>/</span>{" "}
                     {analysis.mode === "fixture"
                       ? "FC-1042"
                       : analysis.id.slice(0, 8).toUpperCase()}
@@ -657,89 +632,11 @@ export function ForgeWorkspace({
               </footer>
             </main>
           ) : (
-            <main id="main" className="projects-page">
-              <div className="eyebrow">Workspace</div>
-              <h1>{view === "dashboard" ? "Overview" : "Your projects"}</h1>
-              <p>
-                Drawings, findings, and review decisions. Saved in this browser.
-              </p>
-              <div className="page-actions">
-                <Button variant="outline" onClick={() => setModal("report")}>
-                  <ArrowDownToLine size={15} />
-                  Export current report
-                </Button>
-              </div>
-              <div className="dashboard-stats">
-                <div>
-                  <FolderClosed size={20} />
-                  <strong>{projects.length}</strong>
-                  <span>Local projects</span>
-                </div>
-                <div>
-                  <TriangleAlert size={20} />
-                  <strong>
-                    {projects.reduce(
-                      (sum, p) =>
-                        sum +
-                        p.analysis.findings.filter((f) => f.status === "open")
-                          .length,
-                      0,
-                    )}
-                  </strong>
-                  <span>Open findings</span>
-                </div>
-                <div>
-                  <Check size={20} />
-                  <strong>
-                    {projects.reduce(
-                      (sum, p) =>
-                        sum +
-                        p.analysis.findings.filter((f) => f.status !== "open")
-                          .length,
-                      0,
-                    )}
-                  </strong>
-                  <span>Reviewed findings</span>
-                </div>
-              </div>
-              <div className="project-list">
-                {projects.map((project) => (
-                  <button
-                    key={project.analysis.id}
-                    onClick={() => openProject(project)}
-                  >
-                    <span className="project-file">
-                      <FileText size={24} />
-                    </span>
-                    <div>
-                      <h2>{project.analysis.projectName}</h2>
-                      <p>
-                        Rev {project.analysis.revision} ·{" "}
-                        {project.analysis.mode === "fixture"
-                          ? "Sample analysis"
-                          : "Uploaded drawing"}{" "}
-                        · {project.analysis.pages.length} pages
-                      </p>
-                    </div>
-                    <span>{project.analysis.findings.length} findings</span>
-                    <ArrowRight size={18} />
-                  </button>
-                ))}
-              </div>
-              <div className="revision-demo">
-                <div>
-                  <h2>Compare sample revisions</h2>
-                  <p>
-                    The revised fixture changes three dimensions. The locating
-                    tolerance remains for review.
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => void showDemo("b")}>
-                  Open revised sample
-                  <ArrowRight size={15} />
-                </Button>
-              </div>
-            </main>
+            <ProjectLibrary
+              projects={projects}
+              onOpen={openProject}
+              onSample={() => void showDemo("b")}
+            />
           )}
         </div>
         <div className="sr-only" role="status" aria-live="polite">
