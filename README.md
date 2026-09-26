@@ -81,9 +81,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=replace-with-the-key-from-local-status
 # Optional: required only for live drawing extraction.
 AI_API_KEY=
 AI_MODEL=gpt-6-astra
-
-# Leave empty for verified designer accounts in localhost development.
-AI_ALLOWED_USER_IDS=
 ```
 
 Replace the placeholder with your actual **local** key. Add your OpenAI key to `AI_API_KEY`
@@ -407,10 +404,9 @@ Response storage is disabled with `store: false`; this is not a zero-retention g
 ### Access and limits
 
 - All extraction requests require a verified **designer** and an owned, saved analysis.
-  Same-origin localhost **development** requests do not require an extraction allowlist entry.
-- Outside localhost development, sign in through `/login` and configure `AI_ALLOWED_USER_IDS`
-  with the comma-separated verified Supabase IDs permitted to spend this API key's quota.
-  The allowlist defaults to empty. Anonymous production requests and non-allowlisted accounts fail.
+  Every designer can use AI as soon as their email is verified, in local and deployed environments.
+  No per-account allowlist is required; the former `AI_ALLOWED_USER_IDS` setting is ignored and can
+  be removed from Vercel. Anonymous, unverified and manufacturer accounts cannot run extraction.
 - Prototype limits: 3 pages per request, page images up to 1600 px (up to 1 MB base64 each),
   at most 500 embedded text spans / 40,000 text characters per page, 24 extracted features,
   120-second provider timeout, 2 concurrent requests and 20 requests/hour per server process.

@@ -15,11 +15,7 @@ import {
   type ModelExtraction,
 } from "../lib/forge/extraction";
 import { extractWithOpenAI } from "../lib/forge/openai-extractor";
-import {
-  createExtractionLimiter,
-  isAllowedExtractionUser,
-  isLocalExtractionRequest,
-} from "../lib/forge/extraction-access";
+import { createExtractionLimiter } from "../lib/forge/extraction-access";
 
 const region = { page: 1, x: 0.1, y: 0.2, width: 0.3, height: 0.1 };
 const input: ExtractionInput = {
@@ -340,25 +336,7 @@ test("provider failures cannot create partial findings or leak response secrets"
   );
 });
 
-test("paid extraction is local-development-only or authenticated and explicitly allowlisted", () => {
-  assert.equal(
-    isLocalExtractionRequest(
-      "development",
-      "localhost:3000",
-      "http://localhost:3000",
-    ),
-    true,
-  );
-  for (const args of [
-    ["production", "localhost:3000", "http://localhost:3000"],
-    ["development", "public.example", "https://public.example"],
-    ["development", "localhost:3000", "https://attacker.example"],
-    ["development", "localhost:3000", null],
-  ] as const)
-    assert.equal(isLocalExtractionRequest(args[0], args[1], args[2]), false);
-  assert.equal(isAllowedExtractionUser(undefined, "owner"), false);
-  assert.equal(isAllowedExtractionUser("stranger", "owner"), false);
-  assert.equal(isAllowedExtractionUser("owner", " owner, teammate "), true);
+test("extraction limits concurrent work, counts hourly requests and releases slots only once", () => {
   const acquire = createExtractionLimiter();
   const one = acquire(0),
     two = acquire(0);

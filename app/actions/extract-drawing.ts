@@ -1,17 +1,12 @@
 "use server";
 
 import "server-only";
-import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import {
   DEFAULT_AI_MODEL,
   extractionInputSchema,
 } from "@/lib/forge/extraction";
-import {
-  createExtractionLimiter,
-  isAllowedExtractionUser,
-  isLocalExtractionRequest,
-} from "@/lib/forge/extraction-access";
+import { createExtractionLimiter } from "@/lib/forge/extraction-access";
 import {
   extractWithOpenAI,
   ExtractionError,
@@ -49,21 +44,6 @@ export async function extractDrawing(
       ok: false,
       error: "Save this drawing to your account before extraction.",
     };
-  const requestHeaders = await headers();
-  if (
-    !isLocalExtractionRequest(
-      process.env.NODE_ENV,
-      requestHeaders.get("host"),
-      requestHeaders.get("origin"),
-    ) &&
-    !isAllowedExtractionUser(userId, process.env.AI_ALLOWED_USER_IDS)
-  ) {
-    return {
-      ok: false,
-      error:
-        "Your account is not enabled for paid extraction. Ask the owner to configure AI_ALLOWED_USER_IDS.",
-    };
-  }
   let release: (() => void) | undefined;
   try {
     release = acquire();

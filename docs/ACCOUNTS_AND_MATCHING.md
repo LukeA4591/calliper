@@ -105,9 +105,9 @@ guarantee of manufacturability, availability, price, or willingness to accept a 
    specified `type` query parameters. Use `magic-link.html` for the legacy code login template.
 5. Configure your approved SMTP service for deployed email and retain provider rate limits.
 6. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and optional server-only
-   `AI_API_KEY` / `AI_MODEL`. Outside same-origin localhost development, `AI_ALLOWED_USER_IDS`
-   must explicitly list designers permitted to spend the extraction key's quota. Even on
-   localhost, extraction requires a verified designer and an owned analysis record.
+   `AI_API_KEY` / `AI_MODEL`. Every verified designer can extract their own saved drawings
+   immediately after signup and email confirmation. No per-user allowlist is required;
+   the old `AI_ALLOWED_USER_IDS` variable is ignored and may be removed.
 7. Exercise both roles, verification, logout, recovery and two-account isolation before launch.
 
 No additional paid service is provisioned by this implementation. Public production operation

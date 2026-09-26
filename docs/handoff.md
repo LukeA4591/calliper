@@ -264,7 +264,7 @@ inputs generate deterministic findings; original suggestions, decisions, coverag
 persist locally and appear in exports. The default fixture remains clearly labelled and unchanged.
 
 The live sample test returned all four expected feature types. Production extraction requires a
-verified Supabase account on the server allowlist. Local development supports same-origin localhost.
+verified Designer account and an owned analysis; new verified designers are enabled automatically.
 Timeouts, refusals, bad responses and usage limits have explicit error paths. No new database tables
 or customer document store were introduced. Real engineering drawing validation, authenticated
 storage, durable background jobs/shared rate limits and STEP analysis remain subsequent work.
