@@ -1184,7 +1184,7 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
 }
-.analysis-form label:not(.upload-zone):not(.step-input) {
+.analysis-form label:not(.upload-zone) {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -1253,58 +1253,6 @@
 }
 .upload-zone svg {
   color: var(--text-secondary);
-}
-.process-readonly {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 12px;
-  padding: var(--space-2) 0;
-  border-block: 1px solid var(--line);
-}
-.process-readonly span {
-  color: var(--muted);
-}
-.process-readonly strong {
-  font-weight: 450;
-}
-.step-input {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-.step-input > span {
-  flex: 1;
-}
-.step-input strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-}
-.step-input small {
-  color: var(--muted);
-  font-weight: 400;
-}
-.step-input span > span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  margin-top: 4px;
-}
-.step-input input {
-  width: 100%;
-  font-size: 12px;
-  color: var(--muted);
-}
-.step-input input::file-selector-button {
-  padding: var(--space-1) var(--space-1);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink);
-  margin-right: var(--space-1);
-  cursor: pointer;
 }
 .dialog-actions {
   display: flex;
@@ -2280,7 +2228,7 @@
 .forge-app button.rounded-md { border-radius: var(--radius-md); }
 .revision-tag, .status-badge, .severity-badge, .candidate-state, .match-status,
 .address-button, .dismiss-button, .toolbar-group > button, .panel-heading button,
-.measurement-pagination button, .step-input input::file-selector-button {
+.measurement-pagination button {
   border-radius: var(--radius-md);
 }
 .nav-item, .nav-item:hover, .nav-item.active, .review-switch button,
@@ -2288,7 +2236,7 @@
 .drawing-tabs > button.active, .drawing-tabs > a, .profile-button,
 .profile-button:hover, .toolbar-group > button, .tool-active, .panel-heading button,
 .measurement-pagination button, .source-link, .text-button, .project-title,
-.project-title svg, .dialog-heading button, .step-input input::file-selector-button,
+.project-title svg, .dialog-heading button,
 .forge-app summary, .forge-app summary:hover { color: var(--accent); }
 .nav-item.active::after, .review-switch button[aria-pressed="true"]::after,
 .issue-card.is-selected::before { background: var(--accent); }

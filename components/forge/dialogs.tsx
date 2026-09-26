@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Box, FileText, LoaderCircle, UploadCloud, X } from "lucide-react";
+import { FileText, LoaderCircle, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { validatePdf, validateStep } from "@/lib/forge/pdf";
+import { validatePdf } from "@/lib/forge/pdf";
 import { defaultProfile } from "@/lib/forge/rules";
 import {
   profileSchema,
@@ -50,15 +50,16 @@ export function Modal({
     </dialog>
   );
 }
+const OTHER_MATERIAL = "__other";
 export function NewAnalysisDialog({
   onClose,
   onCreate,
 }: {
   onClose: () => void;
-  onCreate: (analysis: Analysis, pdf: File, step?: File) => Promise<void>;
+  onCreate: (analysis: Analysis, pdf: File) => Promise<void>;
 }) {
   const [file, setFile] = useState<File>();
-  const [step, setStep] = useState<File>();
+  const [otherMaterial, setOtherMaterial] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -80,10 +81,20 @@ export function NewAnalysisDialog({
             return;
           }
           const fields = new FormData(e.currentTarget);
+          const chosen = String(fields.get("material"));
+          const material =
+            chosen === OTHER_MATERIAL
+              ? String(fields.get("otherMaterial") ?? "")
+                  .trim()
+                  .slice(0, 100)
+              : chosen;
+          if (!material) {
+            setError("Enter the material, or choose one from the list.");
+            return;
+          }
           try {
             setProgress("Checking PDF and reading pages…");
             const pages = await validatePdf(file);
-            if (step) await validateStep(step);
             const id = crypto.randomUUID();
             const analysis: Analysis = {
               id,
@@ -97,7 +108,7 @@ export function NewAnalysisDialog({
                   .slice(0, 20) || "A",
               createdAt: new Date().toISOString(),
               process: "cnc_milling_3_axis",
-              material: String(fields.get("material")),
+              material,
               units: fields.get("units") === "in" ? "in" : "mm",
               filename: file.name.replace(/[\x00-\x1f/\\]/g, "_").slice(0, 200),
               pdfFileId: id,
@@ -111,16 +122,13 @@ export function NewAnalysisDialog({
               )
                 .map((b) => b.toString(16).padStart(2, "0"))
                 .join(""),
-              stepFilename: step?.name
-                .replace(/[\x00-\x1f/\\]/g, "_")
-                .slice(0, 200),
               mode: "uploaded",
               profile: defaultProfile,
               pages,
               findings: [],
             };
             setProgress("Saving analysis to your account…");
-            await onCreate(analysis, file, step);
+            await onCreate(analysis, file);
           } catch (error) {
             setError(
               error instanceof Error
@@ -186,13 +194,20 @@ export function NewAnalysisDialog({
         <div className="form-grid">
           <label>
             Material
-            <select name="material" disabled={busy}>
+            <select
+              name="material"
+              disabled={busy}
+              onChange={(event) =>
+                setOtherMaterial(event.target.value === OTHER_MATERIAL)
+              }
+            >
               <option>Aluminium 6061-T6</option>
               <option>Aluminium 7075-T6</option>
               <option>Stainless steel 304</option>
               <option>Mild steel</option>
               <option>Acetal (POM)</option>
               <option>Unconfirmed</option>
+              <option value={OTHER_MATERIAL}>Other…</option>
             </select>
           </label>
           <label>
@@ -202,29 +217,20 @@ export function NewAnalysisDialog({
               <option value="in">Inches (in)</option>
             </select>
           </label>
+          {otherMaterial && (
+            <label>
+              Material name
+              <input
+                name="otherMaterial"
+                required
+                maxLength={100}
+                disabled={busy}
+                autoFocus
+                placeholder="Grade as stated on the drawing"
+              />
+            </label>
+          )}
         </div>
-        <div className="process-readonly">
-          <span>Manufacturing process</span>
-          <strong>3-axis CNC milling</strong>
-        </div>
-        <label className="step-input">
-          <Box size={18} />
-          <span>
-            <strong>
-              STEP model <small>optional</small>
-            </strong>
-            <span>
-              Stored as an attachment. 3D analysis is not available yet.
-            </span>
-          </span>
-          <input
-            type="file"
-            accept=".step,.stp"
-            disabled={busy}
-            aria-label="Optional STEP model"
-            onChange={(e) => setStep(e.target.files?.[0])}
-          />
-        </label>
         <div className="local-note">
           Your files are saved in this browser. After upload, analyse the
           drawing for potential errors and manufacturing concerns, then inspect

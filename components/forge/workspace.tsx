@@ -539,9 +539,9 @@ export function ForgeWorkspace({
         {modal === "new" && (
           <NewAnalysisDialog
             onClose={() => setModal(null)}
-            onCreate={async (next, pdf, step) => {
-              await saveProject(next, { pdf, step });
-              const project = { analysis: next, pdf, step };
+            onCreate={async (next, pdf) => {
+              await saveProject(next, { pdf });
+              const project = { analysis: next, pdf };
               setProjects((current) => [...current, project]);
               openProject(project);
               setStorage("Analysis saved to account · files on this device");
