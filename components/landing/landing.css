@@ -364,6 +364,11 @@
   margin-top: 24px;
   max-width: 360px;
 }
+/* A note after a steps row needs its own breathing room; the check list gets its
+   spacing from the grid gap instead. */
+.landing-workflow .landing-check-note {
+  margin-top: 48px;
+}
 .landing-text-link {
   display: inline-flex;
   align-items: center;

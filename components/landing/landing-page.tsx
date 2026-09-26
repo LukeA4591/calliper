@@ -6,6 +6,9 @@ import {
   FileUp,
   ScanLine,
   MousePointer2,
+  Factory,
+  Search,
+  Mail,
 } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,7 @@ export function LandingPage() {
         <nav aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#what-we-check">What we check</a>
+          <a href="#manufacturers">Manufacturers</a>
         </nav>
         <div className="landing-nav-actions">
           <Link href="/login">Sign in</Link>
@@ -178,6 +182,58 @@ export function LandingPage() {
               certification.
             </p>
           </div>
+        </section>
+        <section
+          className="landing-workflow landing-section"
+          id="manufacturers"
+          aria-labelledby="makers-title"
+        >
+          <div className="landing-section-heading">
+            <p className="landing-eyebrow">FROM DRAWING TO THE RIGHT WORKSHOP</p>
+            <h2 id="makers-title">
+              Then find
+              <br />
+              who can make it.
+            </h2>
+            <p>
+              Your review becomes a shortlist. We match you with manufacturers
+              equipped to make your part, and show you what they are working
+              with.
+            </p>
+          </div>
+          <ol className="landing-steps">
+            {[
+              {
+                icon: Search,
+                title: "Matched to your part",
+                text: "One step from findings to a shortlist. No spec sheets to cross-reference, no cold search for a workshop that fits.",
+              },
+              {
+                icon: Factory,
+                title: "Real machines, real limits",
+                text: "Equipment and working dimensions, materials and tolerances, side by side. See what a workshop can actually do.",
+              },
+              {
+                icon: Mail,
+                title: "Start the conversation",
+                text: "Open a profile and get in touch with your drawing's requirements already in hand.",
+              },
+            ].map(({ icon: Icon, title, text }, i) => (
+              <li key={title}>
+                <div className="step-top">
+                  <Icon size={22} strokeWidth={1.5} />
+                  <span>0{i + 1}</span>
+                </div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="landing-check-note">
+            Capabilities are declared by each manufacturer. A match is a
+            starting point for a conversation, not a quote, an endorsement or a
+            confirmation that your part can be made.
+          </p>
         </section>
         <section
           className="landing-faq landing-section"
