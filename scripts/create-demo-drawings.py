@@ -35,7 +35,7 @@ def frame(c, rev, page):
     for x in range(1,6):
         line(c,30+x*156.66,30,30+x*156.66,39)
         text(c,105+(x-1)*156.66,24,str(x),8)
-    text(c,52,66,"FORGECHECK  /  ENGINEERING DEMO",11,True)
+    text(c,52,66,"CALLIPER  /  ENGINEERING DEMO",11,True)
     text(c,52,90,"PRECISION MOUNTING BRACKET",22,True)
     text(c,52,112,"FC-1042   /   ALUMINIUM 6061-T6   /   DIMENSIONS IN mm",10)
     text(c,758,66,f"REVISION {rev}    -    SHEET {page} OF 2",10,True)

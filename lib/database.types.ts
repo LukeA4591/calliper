@@ -34,6 +34,53 @@ export type Database = {
   };
   public: {
     Tables: {
+      account_roles: {
+        Row: {
+          created_at: string;
+          role: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          role: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      analyses: {
+        Row: {
+          data: Json;
+          id: string;
+          owner_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          data: Json;
+          id: string;
+          owner_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          data?: Json;
+          id?: string;
+          owner_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "analyses_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "account_roles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
       ideas: {
         Row: {
           created_at: string;
@@ -58,12 +105,136 @@ export type Database = {
         };
         Relationships: [];
       };
+      machines: {
+        Row: {
+          brand: string;
+          category: string;
+          id: string;
+          manufacturer_id: string;
+          materials: string[];
+          max_x_mm: number | null;
+          max_y_mm: number | null;
+          max_z_mm: number | null;
+          model: string;
+          name: string;
+          notes: string;
+          processes: string[];
+          special_capabilities: string[];
+          tolerance_mm: number | null;
+        };
+        Insert: {
+          brand?: string;
+          category: string;
+          id?: string;
+          manufacturer_id: string;
+          materials?: string[];
+          max_x_mm?: number | null;
+          max_y_mm?: number | null;
+          max_z_mm?: number | null;
+          model?: string;
+          name: string;
+          notes?: string;
+          processes: string[];
+          special_capabilities?: string[];
+          tolerance_mm?: number | null;
+        };
+        Update: {
+          brand?: string;
+          category?: string;
+          id?: string;
+          manufacturer_id?: string;
+          materials?: string[];
+          max_x_mm?: number | null;
+          max_y_mm?: number | null;
+          max_z_mm?: number | null;
+          model?: string;
+          name?: string;
+          notes?: string;
+          processes?: string[];
+          special_capabilities?: string[];
+          tolerance_mm?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "machines_manufacturer_id_fkey";
+            columns: ["manufacturer_id"];
+            isOneToOne: false;
+            referencedRelation: "manufacturer_profiles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
+      manufacturer_profiles: {
+        Row: {
+          business_name: string;
+          capacity_notes: string;
+          contact_email: string;
+          contact_phone: string;
+          description: string;
+          limitations: string;
+          location: string;
+          materials: string[];
+          max_x_mm: number | null;
+          max_y_mm: number | null;
+          max_z_mm: number | null;
+          processes: string[];
+          published: boolean;
+          tolerance_mm: number | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          business_name: string;
+          capacity_notes?: string;
+          contact_email: string;
+          contact_phone?: string;
+          description?: string;
+          limitations?: string;
+          location: string;
+          materials?: string[];
+          max_x_mm?: number | null;
+          max_y_mm?: number | null;
+          max_z_mm?: number | null;
+          processes?: string[];
+          published?: boolean;
+          tolerance_mm?: number | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          business_name?: string;
+          capacity_notes?: string;
+          contact_email?: string;
+          contact_phone?: string;
+          description?: string;
+          limitations?: string;
+          location?: string;
+          materials?: string[];
+          max_x_mm?: number | null;
+          max_y_mm?: number | null;
+          max_z_mm?: number | null;
+          processes?: string[];
+          published?: boolean;
+          tolerance_mm?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "manufacturer_profiles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "account_roles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      verified_account_role: { Args: never; Returns: string };
     };
     Enums: {
       [_ in never]: never;

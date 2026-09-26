@@ -1,4 +1,5 @@
 "use client";
+import { Brand } from "@/components/brand";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -7,7 +8,6 @@ import {
   Box,
   Check,
   CircleDot,
-  ScanLine,
   FileText,
   LockKeyhole,
   Plus,
@@ -20,7 +20,10 @@ import {
   findingsFromExtraction,
   updateCandidate,
 } from "@/lib/forge/extraction";
-import { loadProjects, saveProject } from "@/lib/forge/storage";
+import {
+  loadProjects,
+  saveProject as saveLocalProject,
+} from "@/lib/forge/storage";
 import {
   filterFindings,
   selectionAfterFilter,
@@ -37,18 +40,28 @@ import { Modal, NewAnalysisDialog, SettingsDialog } from "./dialogs";
 import { PrintReport } from "./print-report";
 import { ExtractionReview, CandidateDetails } from "./extraction-review";
 
+import { saveAnalysis } from "@/app/actions/analyses";
+import { signOut } from "@/app/login/actions";
+import { validatePdf } from "@/lib/forge/pdf";
+import { MatchingPanel } from "./matching-panel";
 import { ProjectLibrary, type Project } from "./project-views";
 export function ForgeWorkspace({
   initialAnalysis,
   aiConfigured,
+  userId,
+  email,
+  savedAnalyses,
 }: {
+  userId: string;
+  email: string;
+  savedAnalyses: { analysis: Analysis; updatedAt: string }[];
   initialAnalysis: Analysis;
   aiConfigured: boolean;
 }) {
   const [analysis, setAnalysis] = useState(initialAnalysis);
-  const [projects, setProjects] = useState<Project[]>([
-    { analysis: initialAnalysis },
-  ]);
+  const [projects, setProjects] = useState<Project[]>(
+    savedAnalyses.length ? savedAnalyses : [{ analysis: initialAnalysis }],
+  );
   const [source, setSource] = useState("/drawings/cnc-bracket-rev-a.pdf");
   const [selectedId, setSelectedId] = useState<string | null>(
     initialAnalysis.findings[0]?.id ?? null,
@@ -122,31 +135,62 @@ export function ForgeWorkspace({
     setView("analysis");
     setModal(null);
   }
+  async function saveProject(
+    next: Analysis,
+    files?: { pdf?: Blob; step?: Blob },
+  ) {
+    await saveLocalProject(next, userId, files);
+    const result = await saveAnalysis(next, userId);
+    if (result.error) throw new Error(result.error);
+  }
   useEffect(() => {
     let cancelled = false;
-    loadProjects()
+    loadProjects(userId)
       .then(async (saved) => {
         if (cancelled) return;
-        const all = saved.some((p) => p.analysis.id === initialAnalysis.id)
-          ? saved
-          : [{ analysis: initialAnalysis }, ...saved];
+        const merged = new Map(
+          savedAnalyses.map((p) => [
+            p.analysis.id,
+            p as Project & { updatedAt?: string },
+          ]),
+        );
+        for (const local of saved) {
+          const remote = merged.get(local.analysis.id);
+          merged.set(local.analysis.id, {
+            ...local,
+            analysis:
+              remote &&
+              Date.parse(remote.updatedAt ?? "") >
+                Date.parse(local.updatedAt ?? "")
+                ? remote.analysis
+                : local.analysis,
+          });
+        }
+        const all = [...merged.values()];
+        if (!all.some((p) => p.analysis.id === initialAnalysis.id))
+          all.push({ analysis: initialAnalysis });
         setProjects(all);
-        if (!saved.some((p) => p.analysis.id === initialAnalysis.id))
-          await saveProject(initialAnalysis);
-        if (!cancelled) setStorage("Saved on this device");
+        if (!savedAnalyses.some((p) => p.analysis.id === initialAnalysis.id)) {
+          const result = await saveAnalysis(initialAnalysis, userId);
+          if (result.error) throw new Error(result.error);
+        }
+        if (!cancelled)
+          setStorage("Analysis saved to account · files on this device");
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setStorage("Session only");
           setStorageError(
-            "Browser storage is unavailable. You can review the sample, but changes may not survive refresh.",
+            error instanceof Error
+              ? error.message
+              : "Local file storage is unavailable. Saved account analyses are still listed; check the connection before editing.",
           );
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [initialAnalysis]);
+  }, [initialAnalysis, userId, savedAnalyses]);
   useEffect(
     () => () => {
       if (source.startsWith("blob:")) URL.revokeObjectURL(source);
@@ -166,11 +210,13 @@ export function ForgeWorkspace({
     saveQueue.current = saveQueue.current
       .catch(() => {})
       .then(() => saveProject(next))
-      .then(() => setStorage("Saved on this device"))
+      .then(() =>
+        setStorage("Analysis saved to account · files on this device"),
+      )
       .catch(() => {
         setStorage("Not saved");
         setStorageError(
-          "Your latest changes could not be saved. Free browser storage and try another status update, or export your report now.",
+          "Your latest changes could not be synced. Check the connection and retry, or export your report.",
         );
       });
   }
@@ -242,9 +288,8 @@ export function ForgeWorkspace({
     <>
       <div className="forge-app no-print">
         <header className="app-navigation">
-          <Link className="forge-brand" href="/" aria-label="ForgeCheck home">
-            <ScanLine size={22} strokeWidth={1.6} />
-            ForgeCheck
+          <Link className="forge-brand" href="/" aria-label="Calliper home">
+            <Brand />
           </Link>
           <nav aria-label="Main navigation">
             <button
@@ -255,15 +300,97 @@ export function ForgeWorkspace({
               Projects
             </button>
           </nav>
-          <span className="workspace-label">Local workspace</span>
+          <span className="workspace-label">{email}</span>
+          <form action={signOut}>
+            <Button variant="ghost" size="sm">
+              Sign out
+            </Button>
+          </form>
           <Button size="sm" onClick={() => setModal("new")}>
             <Plus size={15} />
             New analysis
           </Button>
         </header>
+        {storageError && (
+          <div className="account-save-error" role="alert">
+            {storageError}{" "}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => persist(analysis)}
+            >
+              Retry save
+            </Button>
+          </div>
+        )}
         <div className="workspace-body">
           {view === "analysis" ? (
             <main id="main" className="analysis-workspace">
+              {!source && analysis.mode === "uploaded" && (
+                <div className="account-save-error">
+                  <p>
+                    This drawing’s file is on another device. Reattach the
+                    original PDF to use its viewer and source annotations.
+                  </p>
+                  <label>
+                    Original PDF
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const pages = await validatePdf(file);
+                          const digest = Array.from(
+                            new Uint8Array(
+                              await crypto.subtle.digest(
+                                "SHA-256",
+                                await file.arrayBuffer(),
+                              ),
+                            ),
+                          )
+                            .map((b) => b.toString(16).padStart(2, "0"))
+                            .join("");
+                          if (
+                            analysis.pdfDigest &&
+                            digest !== analysis.pdfDigest
+                          )
+                            throw new Error(
+                              "This PDF does not match the original drawing.",
+                            );
+                          if (
+                            !analysis.pdfDigest &&
+                            (file.name !== analysis.filename ||
+                              JSON.stringify(pages) !==
+                                JSON.stringify(analysis.pages))
+                          )
+                            throw new Error(
+                              "Use the original PDF with the same filename and page dimensions.",
+                            );
+                          const next = { ...analysis, pdfDigest: digest };
+                          await saveProject(next, { pdf: file });
+                          setProjects((current) =>
+                            current.map((p) =>
+                              p.analysis.id === next.id
+                                ? { ...p, analysis: next, pdf: file }
+                                : p,
+                            ),
+                          );
+                          openProject({ analysis: next, pdf: file });
+                          setStorageError("");
+                        } catch (error) {
+                          setStorageError(
+                            error instanceof Error
+                              ? error.message
+                              : "Could not attach the PDF.",
+                          );
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
               <div className="analysis-heading">
                 <div>
                   <div className="eyebrow">
@@ -387,7 +514,12 @@ export function ForgeWorkspace({
                     selectedId={candidateId}
                     onSelect={selectCandidate}
                     onExtract={(extraction) => {
-                      persist({ ...analysis, extraction, findings: [] });
+                      persist({
+                        ...analysis,
+                        extraction,
+                        requirements: extraction.requirements,
+                        findings: [],
+                      });
                       setFilters({ severity: "all", status: "all" });
                       setSelectedId(null);
                       if (extraction.candidates[0])
@@ -621,13 +753,19 @@ export function ForgeWorkspace({
                   )}
                 </section>
               )}
+              <MatchingPanel
+                key={analysis.id}
+                analysis={analysis}
+                onSave={persist}
+              />
               <footer className="workspace-footer">
                 <span>
                   <LockKeyhole size={12} /> Preliminary review · engineering
                   sign-off required
                 </span>
                 <span>
-                  Files and review decisions are saved in this browser.
+                  Analysis history is account-owned. Drawing files stay on this
+                  device.
                 </span>
               </footer>
             </main>
@@ -635,6 +773,23 @@ export function ForgeWorkspace({
             <ProjectLibrary
               projects={projects}
               onOpen={openProject}
+              onImport={async () => {
+                const legacy = await loadProjects();
+                let count = 0;
+                for (const project of legacy) {
+                  if (
+                    projects.some((p) => p.analysis.id === project.analysis.id)
+                  )
+                    continue;
+                  await saveProject(project.analysis, {
+                    pdf: project.pdf,
+                    step: project.step,
+                  });
+                  setProjects((current) => [...current, project]);
+                  count++;
+                }
+                return `Imported ${count} legacy projects into this account.`;
+              }}
               onSample={() => void showDemo("b")}
             />
           )}
@@ -664,7 +819,7 @@ export function ForgeWorkspace({
                     );
                     const link = document.createElement("a");
                     link.href = url;
-                    link.download = `forgecheck-${analysis.id}.json`;
+                    link.download = `calliper-${analysis.id}.json`;
                     link.click();
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
                   }}
@@ -690,7 +845,7 @@ export function ForgeWorkspace({
               const project = { analysis: next, pdf, step };
               setProjects((current) => [...current, project]);
               openProject(project);
-              setStorage("Saved on this device");
+              setStorage("Analysis saved to account · files on this device");
               setStorageError("");
             }}
           />

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { requirementsSchema } from "../manufacturing/schemas";
 import { evaluateCandidates } from "./rules";
 import {
   evidenceSchema,
@@ -68,6 +69,7 @@ export type ExtractionPage = z.infer<typeof extractionPageSchema>;
 // Fixed nullable fields keep the provider contract explicit, including unknown units.
 const measure = z.number().min(0).max(1_000_000).nullable();
 export const modelExtractionSchema = z.object({
+  requirements: requirementsSchema.optional(),
   candidates: z
     .array(
       z.object({
@@ -185,7 +187,35 @@ export function groundExtraction(
       originalEvidence: evidence,
     });
   }
+  const requirements = raw.requirements
+    ? requirementsSchema.parse(raw.requirements)
+    : undefined;
+  if (requirements) {
+    requirements.coverageComplete = false;
+    for (const key of [
+      "processes",
+      "material",
+      "dimensions",
+      "tolerance",
+      "features",
+      "special",
+    ] as const) {
+      const item = requirements[key];
+      item.confirmed = false;
+      if (
+        item.page !== null &&
+        !input.pages.some((p) => p.page === item.page)
+      ) {
+        item.source = "unknown";
+        requirements.notes.push(
+          "A requirement referenced a page that was not supplied; confirm it manually.",
+        );
+      }
+    }
+    requirements.notes = requirements.notes.slice(0, 30);
+  }
   return {
+    requirements,
     provider: "OpenAI",
     model,
     createdAt: new Date().toISOString(),

@@ -1,4 +1,4 @@
-# ForgeCheck implementation plan
+# Calliper implementation plan
 
 The supplied `handoff.md` is the product brief. The existing Next.js App Router,
 strict TypeScript, Tailwind, shared controls, and Supabase auth remain the foundation.
@@ -17,7 +17,7 @@ strict TypeScript, Tailwind, shared controls, and Supabase auth remain the found
 - Store uploaded PDFs, optional STEP attachments, page metadata, settings, and findings in
   IndexedDB by analysis ID. No customer documents are uploaded to a service in this milestone.
 - Show projects, restore after refresh, report persistence failures, and provide print/PDF export.
-- Retain the original authenticated ideas example at `/ideas`; ForgeCheck lives at `/`.
+- Retain the original authenticated ideas example at `/ideas`; Calliper lives at `/`.
 
 ## Milestone 3 — verification and handoff
 

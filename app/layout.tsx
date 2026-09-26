@@ -3,8 +3,8 @@ import "./globals.css";
 import "./forge.css";
 export const metadata: Metadata = {
   title: {
-    default: "ForgeCheck · Drawing analysis",
-    template: "%s · ForgeCheck",
+    default: "Calliper · Drawing analysis",
+    template: "%s · Calliper",
   },
   description:
     "Evidence-led manufacturing reviews. A clearer path from engineering drawing to production.",

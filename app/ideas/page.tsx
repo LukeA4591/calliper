@@ -1,3 +1,4 @@
+import { Brand } from "@/components/brand";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/config";
@@ -23,8 +24,8 @@ export default async function IdeasPage() {
     <>
       <header className="border-b border-black/10">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-5 lg:px-[30px]">
-          <Link href="/" className="font-semibold">
-            SaaSathon / Starter
+          <Link href="/" className="forge-brand" aria-label="Calliper home">
+            <Brand />
           </Link>
           <div className="flex min-w-0 items-center gap-4">
             <span className="max-w-48 truncate text-sm text-charcoal">

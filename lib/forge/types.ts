@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { requirementsSchema } from "../manufacturing/schemas";
 
 export const severitySchema = z.enum(["high", "medium", "low"]);
 export const statusSchema = z.enum(["open", "addressed", "dismissed"]);
@@ -70,6 +71,7 @@ export const extractedCandidateSchema = z.object({
   reviewedAt: z.string().optional(),
 });
 export const extractionSchema = z.object({
+  requirements: requirementsSchema.optional(),
   provider: z.literal("OpenAI"),
   model: z.string(),
   createdAt: z.string(),
@@ -80,6 +82,7 @@ export const extractionSchema = z.object({
 export type ExtractedCandidate = z.infer<typeof extractedCandidateSchema>;
 export type Extraction = z.infer<typeof extractionSchema>;
 export const analysisSchema = z.object({
+  requirements: requirementsSchema.optional(),
   id: z.string(),
   projectName: z.string(),
   revision: z.string(),
@@ -89,6 +92,10 @@ export const analysisSchema = z.object({
   units: z.enum(["mm", "in"]),
   filename: z.string(),
   pdfFileId: z.string(),
+  pdfDigest: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   stepFilename: z.string().optional(),
   mode: z.enum(["fixture", "uploaded"]),
   fixtureRevision: z.enum(["a", "b"]).optional(),

@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import { codeSchema, emailSchema, type FormState } from "@/lib/validation";
 
 export async function requestCode(
@@ -11,7 +12,10 @@ export async function requestCode(
   const email = emailSchema.safeParse(form.get("email"));
   if (!email.success) return { error: "Enter a valid email address." };
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email: email.data });
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.data,
+    options: { shouldCreateUser: false },
+  });
   if (error)
     return { error: "We couldn’t send a code. Wait a minute and try again." };
   return {
@@ -40,7 +44,8 @@ export async function verifyCode(
         "That code is invalid or expired. Request a new code and try again.",
     };
   revalidatePath("/", "layout");
-  redirect("/ideas");
+  const account = await requireUser();
+  redirect(account.role === "manufacturer" ? "/manufacturer" : "/");
 }
 
 export async function signOut() {

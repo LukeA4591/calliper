@@ -1,9 +1,11 @@
+import { Brand } from "@/components/brand";
 import type { Analysis } from "@/lib/forge/types";
 export function PrintReport({ analysis }: { analysis: Analysis }) {
   return (
     <article className="print-report">
       <header>
-        <h1>ForgeCheck · DFM review</h1>
+        <Brand />
+        <h1>DFM review</h1>
         <p>Preliminary manufacturing review — not engineering sign-off</p>
       </header>
       <h2>

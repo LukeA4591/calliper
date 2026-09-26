@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" width="160" height="100">
+  <title>Calliper mark</title>
+  <g fill="none" stroke="#1A1D21" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="16" y1="20" x2="144" y2="20"/>
+    <line x1="16" y1="20" x2="16" y2="80"/>
+    <line x1="16" y1="80" x2="34" y2="80"/>
+    <line x1="118" y1="20" x2="118" y2="66"/>
+    <line x1="118" y1="66" x2="100" y2="66"/>
+    <line x1="40" y1="20" x2="40" y2="30"/>
+    <line x1="60" y1="20" x2="60" y2="30"/>
+    <line x1="80" y1="20" x2="80" y2="30"/>
+    <line x1="100" y1="20" x2="100" y2="30"/>
+  </g>
+</svg>

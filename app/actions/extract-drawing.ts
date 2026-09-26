@@ -2,7 +2,7 @@
 
 import "server-only";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import {
   DEFAULT_AI_MODEL,
   extractionInputSchema,
@@ -24,6 +24,7 @@ export async function extractDrawing(
 ): Promise<
   { ok: true; extraction: Extraction } | { ok: false; error: string }
 > {
+  const { supabase, userId } = await requireUser("designer");
   const parsed = extractionInputSchema.safeParse(input);
   if (!parsed.success)
     return {
@@ -37,35 +38,31 @@ export async function extractDrawing(
       error:
         "Add AI_API_KEY to the server’s .env.local, then restart the dev server.",
     };
+  const { data: owned } = await supabase
+    .from("analyses")
+    .select("id")
+    .eq("owner_id", userId)
+    .eq("id", parsed.data.sourceFileId)
+    .maybeSingle();
+  if (!owned)
+    return {
+      ok: false,
+      error: "Save this drawing to your account before extraction.",
+    };
   const requestHeaders = await headers();
   if (
     !isLocalExtractionRequest(
       process.env.NODE_ENV,
       requestHeaders.get("host"),
       requestHeaders.get("origin"),
-    )
+    ) &&
+    !isAllowedExtractionUser(userId, process.env.AI_ALLOWED_USER_IDS)
   ) {
-    try {
-      const client = await createClient();
-      const { data, error } = await client.auth.getClaims();
-      if (
-        error ||
-        !isAllowedExtractionUser(
-          data?.claims.sub,
-          process.env.AI_ALLOWED_USER_IDS,
-        )
-      )
-        return {
-          ok: false,
-          error:
-            "Sign in with an account enabled for AI extraction. The owner must add its verified user ID to AI_ALLOWED_USER_IDS on the server.",
-        };
-    } catch {
-      return {
-        ok: false,
-        error: "Sign-in could not be verified. Please sign in and try again.",
-      };
-    }
+    return {
+      ok: false,
+      error:
+        "Your account is not enabled for paid extraction. Ask the owner to configure AI_ALLOWED_USER_IDS.",
+    };
   }
   let release: (() => void) | undefined;
   try {

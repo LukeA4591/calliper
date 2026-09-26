@@ -46,11 +46,15 @@ export function ProjectLibrary({
   projects,
   onOpen,
   onSample,
+  onImport,
 }: {
   projects: Project[];
   onOpen: (project: Project) => void;
   onSample: () => void;
+  onImport: () => Promise<string>;
 }) {
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [source, setSource] = useState("all");
@@ -229,9 +233,35 @@ export function ProjectLibrary({
           Open revised sample <ArrowRight size={15} />
         </Button>
       </div>
+      <details className="legacy-import">
+        <summary>Import drawings saved before accounts</summary>
+        <p>
+          These old projects are unowned browser data. Only import drawings that
+          belong to you; they will be copied into your signed-in account.
+        </p>
+        <Button
+          variant="outline"
+          disabled={importing}
+          onClick={async () => {
+            setImporting(true);
+            try {
+              setImportMessage(await onImport());
+            } catch {
+              setImportMessage(
+                "Could not import all projects. Check your connection and retry; existing projects are preserved.",
+              );
+            } finally {
+              setImporting(false);
+            }
+          }}
+        >
+          {importing ? "Importing…" : "Import my legacy projects"}
+        </Button>
+        <p role="status">{importMessage}</p>
+      </details>
       <p className="library-footnote">
-        Files and review decisions are saved in this browser. Preliminary review
-        · engineering sign-off required.
+        Analysis history is saved to your account. PDF and STEP files stay on
+        this device. Preliminary review · engineering sign-off required.
       </p>
     </main>
   );

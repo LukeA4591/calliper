@@ -98,6 +98,16 @@ export function NewAnalysisDialog({
               units: fields.get("units") === "in" ? "in" : "mm",
               filename: file.name.replace(/[\x00-\x1f/\\]/g, "_").slice(0, 200),
               pdfFileId: id,
+              pdfDigest: Array.from(
+                new Uint8Array(
+                  await crypto.subtle.digest(
+                    "SHA-256",
+                    await file.arrayBuffer(),
+                  ),
+                ),
+              )
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join(""),
               stepFilename: step?.name
                 .replace(/[\x00-\x1f/\\]/g, "_")
                 .slice(0, 200),
@@ -106,7 +116,7 @@ export function NewAnalysisDialog({
               pages,
               findings: [],
             };
-            setProgress("Saving drawing on this device…");
+            setProgress("Saving analysis to your account…");
             await onCreate(analysis, file, step);
           } catch (error) {
             setError(

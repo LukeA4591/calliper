@@ -1,6 +1,7 @@
-# ForgeCheck
+# Calliper
 
-A working local prototype for reviewing potential manufacturing concerns in PDF drawings.
+An engineering drawing review prototype with verified designer/manufacturer accounts,
+manufacturer capability profiles, and explainable equipment matching.
 Built for SaaSathon with Next.js App Router, strict TypeScript, Tailwind v4, and PDF.js.
 
 ## Run from scratch
@@ -34,11 +35,11 @@ Supabase CLI. The CLI is included in this project's development dependencies.
 
 ### 2. Get the code and install dependencies
 
-Clone **this ForgeCheck repository**, replacing `YOUR_REPOSITORY_URL` with its Git URL:
+Clone **this Calliper repository**, replacing `YOUR_REPOSITORY_URL` with its Git URL:
 
 ```sh
-git clone YOUR_REPOSITORY_URL forgecheck
-cd forgecheck
+git clone YOUR_REPOSITORY_URL calliper
+cd calliper
 pnpm install --frozen-lockfile
 ```
 
@@ -81,7 +82,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=replace-with-the-key-from-local-status
 AI_API_KEY=
 AI_MODEL=gpt-6-astra
 
-# Leave empty for development on localhost.
+# Leave empty for verified designer accounts in localhost development.
 AI_ALLOWED_USER_IDS=
 ```
 
@@ -97,12 +98,14 @@ The ports are configured in `supabase/config.toml`:
 | Supabase API      | [127.0.0.1:55431](http://127.0.0.1:55431) | Authentication and database API                                    |
 | Postgres          | `127.0.0.1:55432`                         | Direct database connection; credentials are in local status output |
 | Supabase Studio   | [127.0.0.1:55433](http://127.0.0.1:55433) | Inspect local tables and users                                     |
-| Local email inbox | [127.0.0.1:55434](http://127.0.0.1:55434) | Read development sign-in codes                                     |
+| Local email inbox | [127.0.0.1:55434](http://127.0.0.1:55434) | Read verification, recovery and sign-in emails                     |
 
-**What uses the database?** `/login` and `/ideas` use Supabase. ForgeCheck drawing projects,
-PDF/STEP files, and review decisions currently live in the browser's IndexedDB. Starting the
-database does not upload or sync those projects. The sample drawing viewer can also run without
-Supabase or an AI key; the steps above set up the complete development environment.
+**What uses the database?** Supabase stores authentication, immutable account roles, manufacturer
+profiles/equipment, and each designer's analysis JSON (including requirements and review decisions).
+PDF/STEP files stay in **account-scoped IndexedDB** on the device. On another browser you can see
+analysis history, but must reattach the original PDF to render it. New uploads record a SHA-256
+fingerprint to verify reattachment. The database and a verified account are required; the AI key
+is optional for reviewing the included sample and manually entering requirements.
 
 ### 5. Start the app
 
@@ -111,25 +114,70 @@ pnpm dev
 ```
 
 Keep this terminal running and open [localhost:3000](http://localhost:3000).
-You should land on **Projects**. Open **Precision mounting bracket** to view the sample drawing,
-or choose **New analysis** to upload a PDF. Use **Projects** to return to the library.
+You should land on **Sign in**. Choose **Create an account**, select Designer or Manufacturer,
+and verify your email as described below. Designers land on **Projects**: open **Precision mounting
+bracket** to review the sample, or choose **New analysis** to upload. Manufacturers land on their
+business onboarding/dashboard.
 
 If port 3000 is occupied, run `pnpm dev --port 3100` and open
-[localhost:3100](http://localhost:3100). Use the same hostname and port each time to see your
-saved browser projects: `localhost`, `127.0.0.1`, and different ports have separate storage.
+[localhost:3100](http://localhost:3100). Use the same hostname and port each time to access your
+cached drawing files: `localhost`, `127.0.0.1`, and different ports have separate storage.
 Restart the app after editing `.env.local`.
 
-### 6. Verify database and sign-in setup
+### 6. Register, verify email, and test both roles
 
-1. Open [the sign-in page](http://localhost:3000/login).
-2. Enter an email such as `developer@example.test` and request a code.
-3. Open [the local email inbox](http://127.0.0.1:55434), find the message, and copy the six-digit code.
-4. Enter the code in the app. First sign-in creates a local account and opens `/ideas`.
-5. Create an idea, edit it, and refresh to confirm it persists in the database.
+1. Open [registration](http://localhost:3000/register), enter an email such as
+   `designer@example.test`, choose **Designer**, and enter/confirm a 12–128 character password.
+2. Open [the local email inbox](http://127.0.0.1:55434) and follow the verification link.
+   Press **Verify email** on the confirmation page. Links expire after 10 minutes and work once;
+   GET requests do not consume them, to avoid email scanner/prefetch problems.
+3. You are signed in and directed to Projects. Upload a PDF or open the sample drawing.
+4. Sign out, register another email with **Manufacturer**, and verify it.
+5. Save a business profile as a draft, add at least one machine, then check **Publish** and save.
+6. Sign in as the designer. In a drawing, review **Manufacturer matching** requirements and
+   save them to see compatible/potential manufacturers and per-machine explanations.
 
-These emails are captured locally; an external email provider is not required. If you chose
-another app port, use that port for `/login` too. Drawing review at `/` does not require signing
-in during local development.
+Unverified users cannot access protected routes, actions, or records. Roles cannot be changed
+through profile editing or user metadata. Existing pre-migration accounts become designers.
+Existing users can still sign in with a code at `/login/code`; new users must register with a role.
+`/ideas` remains the protected starter example.
+
+Use **Forgot password?** to send a recovery link to the same local inbox. Verify the link, set a
+new password, then sign in again. Password hashing, token expiration, and session issuance are
+handled by Supabase Auth; application code does not store passwords.
+
+Local verification links use `auth.site_url` in `supabase/config.toml` (default
+`http://localhost:3000`). If you use a different app port, change that setting and restart your
+local Supabase stack with `pnpm supabase stop` then `pnpm db:start`. Restarting preserves its
+local data. No external email provider is required for local development.
+
+### Send real, branded emails
+
+Verification, recovery, and sign-in emails use styled Calliper templates. By default,
+they go to the local test inbox. To deliver to real inboxes, follow
+[the Resend / SMTP setup guide](docs/EMAIL_SETUP.md): verify a sender domain, fill the
+SMTP variables in `.env.local`, then run `pnpm email:configure smtp` and restart the
+local stack. Other people need a deployed app URL for their email links to work.
+
+### Upgrading an existing checkout
+
+```sh
+pnpm install --frozen-lockfile
+pnpm db:start
+pnpm supabase migration up --local
+# Reload changed auth configuration and email templates without resetting data:
+pnpm supabase stop
+pnpm db:start
+pnpm dev
+```
+
+Apply all committed migrations, including `20260926000000_accounts_manufacturers.sql`
+and `20260926010000_analysis_payload_guard.sql`, to add account tables, policies and validation.
+Do **not** use `db:reset` to upgrade existing data. Existing ideas and users remain intact.
+Legacy browser projects are not silently assigned to whichever account signs in first.
+In Projects, use **Import drawings saved before accounts → Import my legacy projects** to
+copy only your own pre-account drawings into your signed-in account. This preserves the old
+local data. New account data is isolated from other users in the app and database.
 
 ### Stop and start again
 
@@ -158,7 +206,7 @@ To apply newly pulled migrations to an existing local database:
 pnpm supabase migration up --local
 ```
 
-Only if you deliberately want to **erase local database users and ideas** and rebuild from the
+Only if you deliberately want to **erase local users, ideas, manufacturer profiles, machines and analysis history** and rebuild from the
 committed migrations:
 
 ```sh
@@ -178,13 +226,14 @@ TypeScript database types with `pnpm db:types`.
 | First database start is slow                     | The CLI is downloading container images; check its output for download or network errors.                                                                                              |
 | Database ports are already in use                | Check for another checkout using the same ports/project ID. Use the intended stack; do not stop unrelated services. The integration suite expects this repository's API on port 55431. |
 | Sign-in shows setup guidance or fails to connect | Check both Supabase values in `.env.local`, run `pnpm supabase status`, and restart `pnpm dev`.                                                                                        |
-| Sign-in email is missing                         | Use the local inbox on port 55434, not your real mailbox; request a fresh code if it expired.                                                                                          |
+| Sign-in email is missing                         | Default mode: check the local inbox on port 55434. SMTP mode: check your real inbox and provider delivery logs. See docs/EMAIL_SETUP.md.                                                                       |
 | AI extraction is unavailable                     | Set `AI_API_KEY` in `.env.local` and restart the app. Check the in-app error for account-access or quota failures.                                                                     |
-| Projects appear missing                          | Return to the same browser, hostname, and port. Drawings are stored locally in that browser, not in Supabase.                                                                          |
+| Projects appear missing                          | Return to the same browser, hostname, and port. Sign into the same account for history; original files remain in the original browser.                                                 |
 
 For the original starter's hosted deployment instructions, see
-[docs/STARTER.md](docs/STARTER.md#4-deploy-your-version). Those instructions cover the auth/ideas
-backend; they do not add shared storage for ForgeCheck drawings.
+[docs/STARTER.md](docs/STARTER.md#4-deploy-your-version). Also follow the account-specific
+[deployment checklist](docs/ACCOUNTS_AND_MATCHING.md#deployment) for the new migrations,
+verification/recovery email templates and required confirmation setting.
 
 ## What works
 
@@ -203,7 +252,7 @@ and **Coverage & notes**. **Findings** contains the issue list, filters and revi
 - Validated PDF uploads: extension, MIME when supplied, signature, 25 MB limit, parseability,
   unlocked documents, and a maximum of 100 pages. Errors appear in the upload dialog.
 - Optional STEP Part 21 attachments up to 50 MB. They are stored only; no 3D analysis occurs.
-- Projects, PDF/STEP files, page dimensions/rotation, settings, and review status in IndexedDB.
+- Account-owned analysis history in Supabase, with PDF/STEP files cached in account-scoped IndexedDB.
 - Editable material and demo tooling thresholds. Profile updates rerun confirmed-input rules and reset
   review decisions for those regenerated findings.
 - Report preview, browser print / Save as PDF, and structured JSON report download. Reports
@@ -224,7 +273,7 @@ other drawing starts with **zero findings**. Extract callouts and confirm their 
 generate checks from that drawing, never recycled sample results.
 
 There is no CAM simulation, tool-access proof, automated redesign, STEP geometry
-parser, shared project storage, or production certification. The missing/ambiguous-specification
+parser, shared drawing-file storage, or production certification. The missing/ambiguous-specification
 check is deferred until extraction and context are available; a missing finish note is not
 silently treated as an error.
 
@@ -268,7 +317,7 @@ Server Component supplies typed sample analysis
   → client drawing workspace
     → PDF.js worker and canvas + normalized annotation overlay
     → shared selection, filters, and review state
-    → IndexedDB projects keyed by analysis ID
+    → owner-protected Supabase analysis JSON + account-scoped IndexedDB files
     → printable / JSON report
 
 Authored sample measurements → deterministic configurable rules → validated findings
@@ -291,12 +340,18 @@ Page numbers are **one-based**. Regions use a **top-left origin on the unrotated
 and shares the paper element's dimensions and scroll transform. Findings without verified
 locations can remain in the issue list but have no drawing marker.
 
-Browser-local persistence is intentionally the first prototype boundary. Data is tied to this
-browser and origin, is not account-isolated, and can be lost when site data is cleared. Avoid
-using this prototype as the only copy of a drawing. Selected page images and text are transmitted
-to OpenAI only after the extraction consent step. The full PDF and STEP file remain local.
-The original authenticated Supabase server reads/actions remain intact. No new public tables
-were introduced, and no production database migration is required for this milestone.
+Analysis metadata and requirements are stored in Supabase under the verified designer's ID.
+Files stay on the device; selected page images/text are sent to OpenAI only after extraction
+consent. The full PDF and STEP file are not uploaded. Browser storage is not a file backup.
+
+Manufacturer business contact information and equipment are visible to verified users only
+when the owner publishes the profile. Login emails and private draft profiles are not listed.
+Matching reads current profiles and evaluates each machine independently using deterministic
+rules. Missing values, inferred/unconfirmed requirements, incomplete page coverage, and unresolved
+limitations produce **Potential match**, never a definitive compatibility claim.
+
+See [Accounts and matching](docs/ACCOUNTS_AND_MATCHING.md) for schema, authorization,
+matching rules, limitations, and hosted setup.
 
 ## Verification
 
@@ -319,7 +374,7 @@ OpenAI. Keep the configured local ports for this suite.
 
 Unit tests cover rule boundaries, incomplete/unverified evidence, coordinate bounds/rotation,
 filter/selection/status behavior, revision fixtures, and file validation. Existing integration
-checks exercise local Supabase CRUD, cross-account isolation, OTP signup/sign-in, protected
+checks exercise local Supabase CRUD, cross-account isolation, password registration/verification/recovery, legacy OTP sign-in, protected
 pages, server actions, and sign-out. They reject remote database targets.
 
 Browser verification covers PDF rendering, card-to-page navigation, marker selection, zoom/fit,
@@ -351,7 +406,8 @@ Response storage is disabled with `store: false`; this is not a zero-retention g
 
 ### Access and limits
 
-- Same-origin localhost **development** requests can extract without signing in.
+- All extraction requests require a verified **designer** and an owned, saved analysis.
+  Same-origin localhost **development** requests do not require an extraction allowlist entry.
 - Outside localhost development, sign in through `/login` and configure `AI_ALLOWED_USER_IDS`
   with the comma-separated verified Supabase IDs permitted to spend this API key's quota.
   The allowlist defaults to empty. Anonymous production requests and non-allowlisted accounts fail.
@@ -369,12 +425,12 @@ Response storage is disabled with `store: false`; this is not a zero-retention g
 Implementation: `lib/forge/openai-extractor.ts` is the provider adapter, `app/actions/extract-drawing.ts`
 is the server boundary, `lib/forge/extraction.ts` validates/grounds/confirms data, and
 `components/forge/extraction-review.tsx` provides the page/consent/measurement review UI.
-No API keys or page-image payloads are persisted in project records. Original extracted evidence
+No API keys or page-image payloads are persisted in analysis records. Structured requirements
+carry explicit/inferred/unknown provenance, supporting callouts, and independent review confirmation. Original extracted evidence
 is retained alongside confirmed edits in JSON exports.
 
 ## Next milestone
 
 Validate on engineering-team CNC drawings and tune extraction based on measured accuracy. Add
-account-isolated document storage with migrations, grants/RLS and two-account tests, then durable
-analysis jobs and shared rate limits. Add STEP geometry only after the drawing workflow and
+private cloud drawing-file storage, then durable analysis jobs and shared rate limits. Add STEP geometry only after the drawing workflow and
 rules have engineering validation.

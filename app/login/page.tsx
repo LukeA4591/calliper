@@ -1,35 +1,49 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LoginForm } from "@/components/login-form";
+import { AuthForm } from "@/components/auth-form";
+import { AccountShell } from "@/components/account-shell";
 import { SetupNotice } from "@/components/setup-notice";
 import { isConfigured } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Sign in" };
-export default async function LoginPage() {
-  const configured = isConfigured();
-  if (configured) {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getClaims();
-    if (data?.claims.sub) redirect("/ideas");
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const { notice } = await searchParams;
+  if (isConfigured()) {
+    const c = await createClient();
+    const { data } = await c.auth.getUser();
+    if (data.user?.email_confirmed_at) redirect("/");
   }
   return (
-    <main
-      id="main"
-      className="grid-container flex min-h-screen flex-col bg-blue py-6"
+    <AccountShell
+      title="Welcome back"
+      description="Sign in to your Calliper workspace."
     >
-      <Link href="/" className="w-fit font-semibold">
-        SaaSathon / Starter
-      </Link>
-      <div className="mx-auto my-auto w-full max-w-md py-16">
-        <p className="text-body-2 mb-4">YOUR NEXT IDEA</p>
-        <h1 className="text-h2 mb-4">Let’s get started.</h1>
-        <p className="mb-8 text-sm leading-6">
-          We’ll email you a code. Your first sign-in creates your account.
-        </p>
-        {configured ? <LoginForm /> : <SetupNotice />}
-      </div>
-      <p className="text-sm">A little less setup. A lot more building.</p>
-    </main>
+      {notice === "password-updated" && (
+        <p role="status">Password updated. Sign in with your new password.</p>
+      )}
+      {notice === "verify" && (
+        <p role="alert">Verify your email before continuing.</p>
+      )}
+      {isConfigured() ? (
+        <>
+          <AuthForm mode="login" />
+          <div className="account-links">
+            <Link href="/register">Create an account</Link>
+            <Link href="/forgot-password">Forgot password?</Link>
+            <Link href="/login/code">Sign in with an email code</Link>
+          </div>
+          <details>
+            <summary>Resend verification email</summary>
+            <AuthForm mode="resend" />
+          </details>
+        </>
+      ) : (
+        <SetupNotice />
+      )}
+    </AccountShell>
   );
 }
