@@ -17,6 +17,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # Integration tests need the local inbox. Normalise here so a developer's
+      # committed SMTP block cannot break CI.
+      - run: pnpm email:configure local
       - run: pnpm db:start > /tmp/supabase-start.log 2>&1
       - run: pnpm db:reset
       - run: pnpm test:integration

@@ -45,7 +45,15 @@ pnpm db:start
 ```
 
 The configure command validates the fields, stores only environment references in
-`supabase/config.toml`, and sets a 60-second resend interval. `db:start` loads
+`supabase/config.toml`, and sets a 60-second resend interval.
+
+**Keep that change out of commits.** `supabase/config.toml` is tracked, so committing the
+managed SMTP block makes every other checkout — and CI, which has no SMTP credentials —
+start the stack pointing at a provider it cannot reach; `pnpm test:integration` then
+refuses to run because it requires the local inbox. Run `pnpm email:configure local`
+before committing, or leave the config change unstaged. CI normalises the mode itself as
+a safeguard. Hosted deployments ignore this file entirely: their SMTP lives in the
+Supabase dashboard. `db:start` loads
 `.env.local` using Node's env-file support. Restarting keeps the existing database.
 Use `pnpm db:start` rather than bare `supabase start` so the SMTP variables are loaded.
 If you rotate credentials, stop/start the stack again.

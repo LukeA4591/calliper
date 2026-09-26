@@ -153,6 +153,8 @@ they go to the local test inbox. To deliver to real inboxes, follow
 [the Resend / SMTP setup guide](docs/EMAIL_SETUP.md): verify a sender domain, fill the
 SMTP variables in `.env.local`, then run `pnpm email:configure smtp` and restart the
 local stack. Other people need a deployed app URL for their email links to work.
+That command edits tracked `supabase/config.toml`, so switch back with
+`pnpm email:configure local` before committing: integration tests require the local inbox.
 
 ### Upgrading an existing checkout
 
