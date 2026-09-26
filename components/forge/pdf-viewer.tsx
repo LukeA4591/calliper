@@ -52,8 +52,7 @@ export function PdfViewer({
     () =>
       allFindings
         .find((f) => f.id === selectedId)
-        ?.evidence.find((e) => e.region && e.status === "verified")?.region
-        ?.page ?? 1,
+        ?.evidence.find((e) => e.region)?.region?.page ?? 1,
   );
   const [pageSize, setPageSize] = useState({
     width: 1000,
@@ -211,7 +210,7 @@ export function PdfViewer({
       return;
     const finding = allFindings.find((f) => f.id === focusRequest.id);
     const evidence = finding?.evidence.find(
-      (e) => e.region && e.status === "verified",
+      (e) => e.region && (e.status === "verified" || finding?.ai),
     );
     const region =
       focusRequest.region ??
@@ -293,7 +292,10 @@ export function PdfViewer({
   };
   const pageMarkers = findings.flatMap((finding) =>
     finding.evidence
-      .filter((e) => e.region?.page === page && e.status === "verified")
+      .filter(
+        (e) =>
+          e.region?.page === page && (e.status === "verified" || finding.ai),
+      )
       .map((evidence, index) => ({
         finding,
         region: rotatedRegion(evidence.region!, pageSize.rotation),
@@ -453,8 +455,8 @@ export function PdfViewer({
                       height: `${region.height * 100}%`,
                     }}
                     onClick={() => onSelect(finding.id)}
-                    title={`${finding.severity} priority · ${finding.status}: ${finding.title}`}
-                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}, ${finding.severity} priority, ${finding.status}`}
+                    title={`${finding.ai ? "AI-suggested location · " : ""}${finding.severity} priority · ${finding.status}: ${finding.title}`}
+                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}, ${finding.severity} priority, ${finding.status}${finding.ai ? ", AI-suggested location" : ""}`}
                     aria-pressed={selectedId === finding.id}
                   >
                     <span>
@@ -476,7 +478,7 @@ export function PdfViewer({
         <span>
           <Scan size={13} />{" "}
           {annotations
-            ? `${pageMarkers.length} located findings on this page`
+            ? `${pageMarkers.length} located findings · AI markers need review`
             : "Annotations hidden"}
         </span>
         <span>

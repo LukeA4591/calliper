@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiFindingSchema, drawingReviewSchema } from "./review-schema";
 import { requirementsSchema } from "../manufacturing/schemas";
 
 export const severitySchema = z.enum(["high", "medium", "low"]);
@@ -30,6 +31,7 @@ export const evidenceSchema = z.object({
   ),
 });
 export const findingSchema = z.object({
+  ai: aiFindingSchema.optional(),
   id: z.string(),
   ruleId: z.string(),
   title: z.string(),
@@ -82,6 +84,7 @@ export const extractionSchema = z.object({
 export type ExtractedCandidate = z.infer<typeof extractedCandidateSchema>;
 export type Extraction = z.infer<typeof extractionSchema>;
 export const analysisSchema = z.object({
+  review: drawingReviewSchema.optional(),
   requirements: requirementsSchema.optional(),
   id: z.string(),
   projectName: z.string(),
@@ -145,7 +148,30 @@ export function updateReviewStatus(
   return {
     ...analysis,
     findings: analysis.findings.map((f) =>
-      f.id === id ? { ...f, status } : f,
+      f.id === id
+        ? {
+            ...f,
+            status,
+            ai: f.ai
+              ? {
+                  ...f.ai,
+                  decision:
+                    status === "dismissed"
+                      ? "rejected"
+                      : status === "addressed" ||
+                          (status === "open" && f.status === "addressed")
+                        ? "confirmed"
+                        : "pending",
+                  reviewedAt:
+                    status === "open"
+                      ? f.status === "addressed"
+                        ? f.ai.reviewedAt
+                        : undefined
+                      : new Date().toISOString(),
+                }
+              : undefined,
+          }
+        : f,
     ),
   };
 }
@@ -179,4 +205,11 @@ export function rotatedRegion(
       height: region.width,
     };
   return region;
+}
+
+// AI locations are navigable suggestions, never silently upgraded to verified evidence.
+export function findingRegion(finding: Finding) {
+  return finding.evidence.find(
+    (e) => e.region && (e.status === "verified" || finding.ai),
+  )?.region;
 }

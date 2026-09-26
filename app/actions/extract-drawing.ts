@@ -2,25 +2,24 @@
 
 import "server-only";
 import { requireUser } from "@/lib/auth";
-import {
-  DEFAULT_AI_MODEL,
-  extractionInputSchema,
-} from "@/lib/forge/extraction";
+import { DEFAULT_AI_MODEL } from "@/lib/forge/extraction";
 import { createExtractionLimiter } from "@/lib/forge/extraction-access";
 import {
   extractWithOpenAI,
   ExtractionError,
 } from "@/lib/forge/openai-extractor";
-import type { Extraction } from "@/lib/forge/types";
+import { analysisSchema } from "@/lib/forge/types";
+import {
+  reviewInputSchema,
+  type ReviewResult,
+} from "@/lib/forge/drawing-review";
 
 const acquire = createExtractionLimiter();
 export async function extractDrawing(
   input: unknown,
-): Promise<
-  { ok: true; extraction: Extraction } | { ok: false; error: string }
-> {
+): Promise<{ ok: true; result: ReviewResult } | { ok: false; error: string }> {
   const { supabase, userId } = await requireUser("designer");
-  const parsed = extractionInputSchema.safeParse(input);
+  const parsed = reviewInputSchema.safeParse(input);
   if (!parsed.success)
     return {
       ok: false,
@@ -35,14 +34,24 @@ export async function extractDrawing(
     };
   const { data: owned } = await supabase
     .from("analyses")
-    .select("id")
+    .select("id, data")
     .eq("owner_id", userId)
-    .eq("id", parsed.data.sourceFileId)
+    .eq("id", parsed.data.analysisId)
     .maybeSingle();
   if (!owned)
     return {
       ok: false,
-      error: "Save this drawing to your account before extraction.",
+      error: "Save this drawing to your account before AI review.",
+    };
+  const saved = analysisSchema.safeParse(owned.data);
+  if (
+    !saved.success ||
+    saved.data.pdfFileId !== parsed.data.sourceFileId ||
+    parsed.data.pages.some((p) => p.page > saved.data.pages.length)
+  )
+    return {
+      ok: false,
+      error: "The selected pages do not belong to the saved drawing.",
     };
   let release: (() => void) | undefined;
   try {
@@ -51,18 +60,19 @@ export async function extractDrawing(
     return { ok: false, error: (error as Error).message };
   }
   try {
-    const extraction = await extractWithOpenAI(parsed.data, {
+    const result = await extractWithOpenAI(parsed.data, {
       apiKey: process.env.AI_API_KEY.trim(),
       model: process.env.AI_MODEL?.trim() || DEFAULT_AI_MODEL,
+      totalPages: saved.data.pages.length,
     });
-    return { ok: true, extraction };
+    return { ok: true, result };
   } catch (error) {
     return {
       ok: false,
       error:
         error instanceof ExtractionError
           ? error.message
-          : "Extraction failed. Your drawing is saved; please try again.",
+          : "Drawing review failed. Your drawing is saved; please try again.",
     };
   } finally {
     release();

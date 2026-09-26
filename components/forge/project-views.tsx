@@ -8,14 +8,19 @@ import type { Analysis } from "@/lib/forge/types";
 export type Project = { analysis: Analysis; pdf?: Blob; step?: Blob };
 
 function reviewState(analysis: Analysis) {
-  const pending =
-    analysis.extraction?.candidates.filter((c) => c.decision === "pending")
-      .length ?? 0;
+  const pending = analysis.review
+    ? analysis.findings.filter((f) => f.ai?.decision === "pending").length
+    : (analysis.extraction?.candidates.filter((c) => c.decision === "pending")
+        .length ?? 0);
   const open = analysis.findings.filter((f) => f.status === "open").length;
+  const reviewed = analysis.findings.filter((f) =>
+    f.ai ? f.ai.decision !== "pending" : f.status !== "open",
+  ).length;
   const high = analysis.findings.filter(
     (f) => f.status === "open" && f.severity === "high",
   ).length;
-  const unanalysed = analysis.mode === "uploaded" && !analysis.extraction;
+  const unanalysed =
+    analysis.mode === "uploaded" && !analysis.extraction && !analysis.review;
   const status = unanalysed
     ? "not-started"
     : pending
@@ -24,13 +29,13 @@ function reviewState(analysis: Analysis) {
         ? "open"
         : "reviewed";
   const label = unanalysed
-    ? "Ready to extract"
+    ? "Ready for AI review"
     : pending
-      ? `${pending} pending measurement${pending === 1 ? "" : "s"}`
+      ? `${pending} pending ${analysis.review ? "AI flag" : "measurement"}${pending === 1 ? "" : "s"}`
       : open
         ? `${open} open finding${open === 1 ? "" : "s"}`
         : "No outstanding reviews";
-  return { pending, open, high, unanalysed, status, label };
+  return { pending, open, reviewed, high, unanalysed, status, label };
 }
 
 function dateLabel(value: string) {
@@ -114,8 +119,8 @@ export function ProjectLibrary({
             onChange={(event) => setStatus(event.target.value)}
           >
             <option value="all">All statuses</option>
-            <option value="not-started">Ready to extract</option>
-            <option value="pending">Pending measurements</option>
+            <option value="not-started">Ready for AI review</option>
+            <option value="pending">Awaiting review</option>
             <option value="open">Open findings</option>
             <option value="reviewed">No outstanding reviews</option>
           </select>
@@ -162,56 +167,59 @@ export function ProjectLibrary({
             </tr>
           </thead>
           <tbody>
-            {filtered.map(({ project, label, high, open, status }) => {
-              const a = project.analysis;
-              return (
-                <tr key={a.id}>
-                  <td>
-                    <button
-                      className="project-title"
-                      onClick={() => onOpen(project)}
-                    >
-                      {a.projectName} <ArrowRight size={14} />
-                    </button>
-                    <span className="library-meta">
-                      Rev {a.revision} · {a.filename}
-                    </span>
-                    <span className="library-meta">
-                      {a.material} · {a.pages.length} pages ·{" "}
-                      {a.mode === "fixture" ? "Sample" : "Upload"}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`status-badge ${
-                        status === "reviewed"
-                          ? "status-success"
-                          : status === "not-started"
-                            ? "status-info"
-                            : "status-warning"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                    {high > 0 && (
-                      <span className="library-priority">
-                        {high} high priority
+            {filtered.map(
+              ({ project, label, high, open, reviewed, status }) => {
+                const a = project.analysis;
+                return (
+                  <tr key={a.id}>
+                    <td>
+                      <button
+                        className="project-title"
+                        onClick={() => onOpen(project)}
+                      >
+                        {a.projectName} <ArrowRight size={14} />
+                      </button>
+                      <span className="library-meta">
+                        Rev {a.revision} · {a.filename}
                       </span>
-                    )}
-                  </td>
-                  <td>
-                    {open} open
-                    <span className="library-meta">
-                      {a.findings.length - open} reviewed · {a.findings.length}{" "}
-                      total
-                    </span>
-                  </td>
-                  <td>
-                    <time dateTime={a.createdAt}>{dateLabel(a.createdAt)}</time>
-                  </td>
-                </tr>
-              );
-            })}
+                      <span className="library-meta">
+                        {a.material} · {a.pages.length} pages ·{" "}
+                        {a.mode === "fixture" ? "Sample" : "Upload"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`status-badge ${
+                          status === "reviewed"
+                            ? "status-success"
+                            : status === "not-started"
+                              ? "status-info"
+                              : "status-warning"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                      {high > 0 && (
+                        <span className="library-priority">
+                          {high} high priority
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {open} open
+                      <span className="library-meta">
+                        {reviewed} reviewed · {a.findings.length} total
+                      </span>
+                    </td>
+                    <td>
+                      <time dateTime={a.createdAt}>
+                        {dateLabel(a.createdAt)}
+                      </time>
+                    </td>
+                  </tr>
+                );
+              },
+            )}
           </tbody>
         </table>
       </div>

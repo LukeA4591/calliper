@@ -335,8 +335,8 @@ export function MatchingPanel({
       </details>
       {!enabled ? (
         <p className="matching-empty">
-          Extract requirements from your drawing or fill in the review above to
-          find manufacturers.
+          Review and save the drawing requirements above to find manufacturers.
+          Full-part matching is separate from the drawing review.
         </p>
       ) : (
         <>

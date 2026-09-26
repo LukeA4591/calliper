@@ -1,4 +1,5 @@
 import { Brand } from "@/components/brand";
+import { checkLabels } from "@/lib/forge/review-schema";
 import type { Analysis } from "@/lib/forge/types";
 export function PrintReport({ analysis }: { analysis: Analysis }) {
   return (
@@ -16,12 +17,44 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
         units: {analysis.units}
       </p>
       <p>
-        {analysis.mode === "fixture"
-          ? "SAMPLE ANALYSIS: authored drawing inputs and deterministic demo rules. No AI extraction."
-          : analysis.extraction
-            ? "Uploaded drawing: AI extraction followed by reviewer confirmation and deterministic checks."
-            : "Uploaded drawing: extraction has not been run. No manufacturing screening completed."}
+        {analysis.review
+          ? "AI drawing review: potential errors and manufacturing concerns. Engineer confirmation required."
+          : analysis.mode === "fixture"
+            ? "SAMPLE ANALYSIS: authored drawing inputs and deterministic demo rules. No AI extraction."
+            : analysis.extraction
+              ? "Uploaded drawing: AI extraction followed by reviewer confirmation and deterministic checks."
+              : "Uploaded drawing: extraction has not been run. No manufacturing screening completed."}
       </p>
+      {analysis.review && (
+        <section>
+          <h3>AI review coverage</h3>
+          <p>
+            {analysis.review.provider} · {analysis.review.model} ·{" "}
+            {analysis.review.createdAt}. Pages{" "}
+            {analysis.review.pages.join(", ")} of {analysis.review.totalPages}.
+          </p>
+          {analysis.review.assumedGeneralTolerance && (
+            <p>
+              General tolerance missing — ISO 2768-m provisionally assumed, not
+              specified by the designer. Potential AS 1100 documentation
+              violation requires review.
+            </p>
+          )}
+          {analysis.review.checks.map((c) => (
+            <p key={c.id}>
+              {checkLabels[c.id]} · {c.outcome}: {c.summary}
+            </p>
+          ))}
+          {analysis.review.tolerances.map((t, i) => (
+            <p key={i}>
+              Page {t.page} · {t.quote}: {t.summary}
+            </p>
+          ))}
+          {analysis.review.warnings.map((w, i) => (
+            <p key={i}>{w}</p>
+          ))}
+        </section>
+      )}
       {analysis.extraction && (
         <section>
           <h3>Extraction scope and review</h3>
@@ -58,7 +91,9 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
         </section>
       )}
       <p>
-        Profile: {analysis.profile.version}. {analysis.profile.provenance}
+        {analysis.review
+          ? `Review basis: ${analysis.review.version}. Six-check drawing review with ISO 2768-1 linear tolerance screening.`
+          : `Profile: ${analysis.profile.version}. ${analysis.profile.provenance}`}
       </p>
       <p>
         {analysis.findings.length} findings ·{" "}
@@ -76,12 +111,30 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
             · {finding.ruleId}
           </p>
           <p>{finding.description}</p>
+          {finding.ai && (
+            <p>
+              Engineer decision: {finding.ai.decision}.{" "}
+              {finding.ai.reviewerNote || "No review note."} AI evidence and
+              source locations remain suggestions.
+            </p>
+          )}
+          {finding.ai?.priorityReason && (
+            <p>Priority: {finding.ai.priorityReason}</p>
+          )}
+          {finding.ai?.result === "pass" && (
+            <p>
+              Tolerance screen passed for the listed callouts; AI readings
+              require confirmation.
+            </p>
+          )}
           {finding.evidence.map((e, i) => (
             <p key={i}>
               <strong>Evidence:</strong> {e.text} · {e.status} ·{" "}
               {e.region
                 ? `Page ${e.region.page}, normalized region (${e.region.x}, ${e.region.y}, ${e.region.width}, ${e.region.height})`
-                : "No verified location"}
+                : finding.ai
+                  ? `Page ${finding.ai.page}; no located source`
+                  : "No verified location"}
             </p>
           ))}
           <p>

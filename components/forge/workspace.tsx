@@ -38,8 +38,13 @@ import { PdfViewer } from "./pdf-viewer";
 import { IssueDetails } from "./issue-details";
 import { Modal, NewAnalysisDialog, SettingsDialog } from "./dialogs";
 import { PrintReport } from "./print-report";
-import { ExtractionReview, CandidateDetails } from "./extraction-review";
+import { CandidateDetails } from "./extraction-review";
 
+import { DrawingReviewControls } from "./drawing-review";
+import {
+  applyDrawingReview,
+  reviewAiFinding,
+} from "@/lib/forge/drawing-review";
 import { saveAnalysis } from "@/app/actions/analyses";
 import { signOut } from "@/app/login/actions";
 import { validatePdf } from "@/lib/forge/pdf";
@@ -96,18 +101,27 @@ export function ForgeWorkspace({
   const selected = visible.find((f) => f.id === selectedId);
   const selectedIndex = visible.findIndex((f) => f.id === selectedId);
   const openCount = analysis.findings.filter((f) => f.status === "open").length;
+  const reviewedCount = analysis.findings.filter((f) =>
+    f.ai ? f.ai.decision !== "pending" : f.status !== "open",
+  ).length;
 
   function openProject(project: Project) {
     const next = project.analysis;
     const nextCandidate =
-      next.mode === "uploaded" && !next.findings.length
+      next.mode === "uploaded" &&
+      !next.review &&
+      !!next.extraction?.candidates.length &&
+      !next.findings.length
         ? (next.extraction?.candidates.find((c) => c.decision === "pending") ??
           next.extraction?.candidates[0])
         : undefined;
     setAnalysis(next);
     setCandidateId(nextCandidate?.id ?? null);
     setReviewMode(
-      next.mode === "uploaded" && !next.findings.length
+      next.mode === "uploaded" &&
+        !next.review &&
+        !!next.extraction?.candidates.length &&
+        !next.findings.length
         ? "measurements"
         : "findings",
     );
@@ -224,7 +238,11 @@ export function ForgeWorkspace({
     setCandidateId(null);
     setReviewMode("findings");
     setSelectedId(id);
-    setFocusRequest({ id, sequence: ++sequence.current });
+    setFocusRequest({
+      id,
+      page: analysis.findings.find((f) => f.id === id)?.ai?.page,
+      sequence: ++sequence.current,
+    });
   }
   function selectCandidate(next: ExtractedCandidate | null) {
     setCandidateId(next?.id ?? null);
@@ -252,7 +270,11 @@ export function ForgeWorkspace({
     );
     setSelectedId(id);
     if (id && id !== selectedId)
-      setFocusRequest({ id, sequence: ++sequence.current });
+      setFocusRequest({
+        id,
+        page: analysis.findings.find((f) => f.id === id)?.ai?.page,
+        sequence: ++sequence.current,
+      });
   }
   function review(status: ReviewStatus) {
     if (!selectedId) return;
@@ -445,11 +467,13 @@ export function ForgeWorkspace({
                   <summary>Analysis information</summary>
                   <div className="context-details">
                     <p>
-                      {analysis.mode === "fixture"
-                        ? "Authored drawing and rule-based findings. No AI extraction. Engineer validation pending."
-                        : analysis.extraction
-                          ? "Measurements extracted with AI require reviewer confirmation before generating findings."
-                          : "Extract callouts with AI, then confirm dimensions and source locations."}
+                      {analysis.review
+                        ? "Six drawing checks with evidence and priority. All readings and locations require engineer review."
+                        : analysis.mode === "fixture"
+                          ? "Authored drawing and rule-based findings. No AI extraction. Engineer validation pending."
+                          : analysis.extraction
+                            ? "Measurements extracted with AI require reviewer confirmation before generating findings."
+                            : "Analyse the drawing to flag missing specifications and manufacturing concerns."}
                     </p>
                     <p>
                       PDF: {analysis.filename} · {analysis.pages.length} pages
@@ -482,66 +506,93 @@ export function ForgeWorkspace({
                   >
                     Findings <span>{analysis.findings.length}</span>
                   </button>
-                  {analysis.mode === "uploaded" && (
-                    <button
-                      aria-pressed={reviewMode === "measurements"}
-                      onClick={() => {
-                        setReviewMode("measurements");
-                        const next =
-                          analysis.extraction?.candidates.find(
-                            (c) => c.decision === "pending",
-                          ) ?? analysis.extraction?.candidates[0];
-                        if (next) selectCandidate(next);
-                      }}
-                    >
-                      Measurements{" "}
-                      <span>{analysis.extraction?.candidates.length ?? 0}</span>
-                    </button>
-                  )}
+                  {!analysis.review &&
+                    !!analysis.extraction?.candidates.length && (
+                      <button
+                        aria-pressed={reviewMode === "measurements"}
+                        onClick={() => {
+                          setReviewMode("measurements");
+                          const next =
+                            analysis.extraction?.candidates.find(
+                              (c) => c.decision === "pending",
+                            ) ?? analysis.extraction?.candidates[0];
+                          if (next) selectCandidate(next);
+                        }}
+                      >
+                        Previous measurements{" "}
+                        <span>
+                          {analysis.extraction?.candidates.length ?? 0}
+                        </span>
+                      </button>
+                    )}
                 </div>
-                <button
-                  className="profile-button"
-                  aria-label="Process settings"
-                  onClick={() => setModal("settings")}
-                >
-                  <SlidersHorizontal size={15} />
-                  Process settings<span>{analysis.profile.name}</span>
-                </button>
+                {!analysis.review && (
+                  <button
+                    className="profile-button"
+                    aria-label="Process settings"
+                    onClick={() => setModal("settings")}
+                  >
+                    <SlidersHorizontal size={15} />
+                    Process settings<span>{analysis.profile.name}</span>
+                  </button>
+                )}
               </div>
               {storageError && (
                 <div className="storage-error" role="alert">
                   {storageError}
                 </div>
               )}
-              {analysis.mode === "uploaded" &&
-                reviewMode === "measurements" && (
-                  <ExtractionReview
-                    key={analysis.id}
-                    analysis={analysis}
-                    source={source}
-                    configured={aiConfigured}
-                    selectedId={candidateId}
-                    onSelect={selectCandidate}
-                    onExtract={(extraction) => {
-                      persist({
-                        ...analysis,
-                        extraction,
-                        requirements: extraction.requirements,
-                        findings: [],
-                      });
-                      setFilters({ severity: "all", status: "all" });
-                      setSelectedId(null);
-                      if (extraction.candidates[0])
-                        selectCandidate(extraction.candidates[0]);
-                      else {
-                        setCandidateId(null);
-                        setFocusRequest(null);
+              <DrawingReviewControls
+                key={`drawing-review:${analysis.id}`}
+                analysis={analysis}
+                source={source}
+                configured={aiConfigured}
+                onResult={(result) => {
+                  const next = applyDrawingReview(analysis, result);
+                  persist(next);
+                  setReviewMode("findings");
+                  setCandidateId(null);
+                  setFilters({ severity: "all", status: "all" });
+                  setSelectedId(next.findings[0]?.id ?? null);
+                  setFocusRequest(
+                    next.findings[0]
+                      ? {
+                          id: next.findings[0].id,
+                          page: next.findings[0].ai?.page,
+                          sequence: ++sequence.current,
+                        }
+                      : null,
+                  );
+                  setNotice(
+                    `${next.findings.length} review items ready for engineer review`,
+                  );
+                }}
+              />
+              {reviewMode === "measurements" &&
+                analysis.extraction &&
+                !analysis.review && (
+                  <label className="measurement-picker legacy-measurements">
+                    Previous measurement
+                    <select
+                      value={candidateId ?? ""}
+                      onChange={(e) =>
+                        selectCandidate(
+                          analysis.extraction!.candidates.find(
+                            (c) => c.id === e.target.value,
+                          ) ?? null,
+                        )
                       }
-                      setNotice(
-                        `${extraction.candidates.length} suggestions ready for confirmation`,
-                      );
-                    }}
-                  />
+                    >
+                      <option value="" disabled>
+                        Select a saved measurement
+                      </option>
+                      {analysis.extraction.candidates.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label} · {c.decision}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
               <div className="review-layout">
                 <div className="drawing-column">
@@ -612,6 +663,16 @@ export function ForgeWorkspace({
                   />
                 ) : (
                   <IssueDetails
+                    key={`${selected?.id ?? "none"}:${selected?.ai?.decision ?? "legacy"}`}
+                    onAiReview={(decision, note) => {
+                      if (selectedId)
+                        persist(
+                          reviewAiFinding(analysis, selectedId, {
+                            decision,
+                            note,
+                          }),
+                        );
+                    }}
                     finding={reviewMode === "findings" ? selected : undefined}
                     mode={reviewMode}
                     index={selectedIndex}
@@ -642,8 +703,7 @@ export function ForgeWorkspace({
                         Review queue <span>{analysis.findings.length}</span>
                       </h2>
                       <p>
-                        {openCount} open <span>·</span>{" "}
-                        {analysis.findings.length - openCount} reviewed
+                        {openCount} open <span>·</span> {reviewedCount} reviewed
                       </p>
                     </div>
                     <div className="filter-controls">
@@ -712,17 +772,30 @@ export function ForgeWorkspace({
                           <span className="issue-location">
                             {finding.evidence[0]?.region
                               ? `Page ${finding.evidence[0].region.page}`
-                              : "No verified location"}
+                              : finding.ai
+                                ? `Page ${finding.ai.page} · unlocated`
+                                : "No verified location"}
                           </span>
                           <span
-                            className={`card-status status-${finding.status}`}
+                            className={`card-status status-${finding.ai?.result === "pass" && finding.ai.decision !== "rejected" ? "success" : finding.status}`}
                           >
                             {finding.status === "addressed" ? (
                               <Check size={13} />
                             ) : (
                               <CircleDot size={12} />
                             )}
-                            {finding.status}
+                            {finding.ai?.result === "pass" &&
+                            finding.ai.decision !== "rejected"
+                              ? finding.ai.decision === "confirmed"
+                                ? "Pass · confirmed"
+                                : "Pass · check readings"
+                              : finding.ai?.decision === "pending" &&
+                                  finding.status === "open"
+                                ? "AI flag"
+                                : finding.ai?.decision === "confirmed" &&
+                                    finding.status === "open"
+                                  ? "Confirmed"
+                                  : finding.status}
                           </span>
                           <ArrowRight className="row-arrow" size={16} />
                         </button>
@@ -735,14 +808,18 @@ export function ForgeWorkspace({
                         <strong>
                           {analysis.findings.length
                             ? "No findings match these filters"
-                            : "Your drawing is ready. Findings need evidence."}
+                            : analysis.review
+                              ? "No AI issues flagged in reviewed pages"
+                              : "Your drawing is ready for AI review"}
                         </strong>
                         <p>
                           {analysis.findings.length
                             ? "Try a different severity or review status."
-                            : analysis.mode === "uploaded"
-                              ? "Extract and confirm measurements above. Only confirmed inputs are screened; zero findings is not a manufacturability verdict."
-                              : "No concerns cross the current tooling thresholds."}
+                            : analysis.review
+                              ? "Review the six-check coverage and any unassessed areas; zero flags is not a manufacturability verdict."
+                              : analysis.mode === "uploaded"
+                                ? "Use Analyse drawing above to review the drawing."
+                                : "No concerns cross the current tooling thresholds."}
                         </p>
                       </div>
                       <button
@@ -868,8 +945,9 @@ export function ForgeWorkspace({
                 ...analysis,
                 profile,
                 material,
-                findings:
-                  analysis.mode === "fixture"
+                findings: analysis.review
+                  ? analysis.findings
+                  : analysis.mode === "fixture"
                     ? evaluateCandidates(
                         fixtureCandidates(analysis.fixtureRevision || "a"),
                         profile,

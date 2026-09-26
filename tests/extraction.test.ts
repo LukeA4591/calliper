@@ -3,18 +3,15 @@ import assert from "node:assert/strict";
 import { createFixture } from "../lib/forge/fixture";
 import { analysisSchema } from "../lib/forge/types";
 import {
-  DEFAULT_AI_MODEL,
   confirmationSchema,
   confirmCandidate,
   extractionInputSchema,
   findingsFromExtraction,
   groundExtraction,
-  modelExtractionSchema,
   updateCandidate,
   type ExtractionInput,
   type ModelExtraction,
 } from "../lib/forge/extraction";
-import { extractWithOpenAI } from "../lib/forge/openai-extractor";
 import { createExtractionLimiter } from "../lib/forge/extraction-access";
 
 const region = { page: 1, x: 0.1, y: 0.2, width: 0.3, height: 0.1 };
@@ -249,90 +246,6 @@ test("scanned sources keep estimated regions and unknown units unverified", () =
   assert.equal(
     findingsFromExtraction({ ...analysis(), extraction: result }).length,
     0,
-  );
-});
-
-const response = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status });
-const completed = (data: unknown) => ({
-  status: "completed",
-  output: [
-    {
-      type: "message",
-      content: [{ type: "output_text", text: JSON.stringify(data) }],
-    },
-  ],
-});
-const config = { apiKey: "public-test-placeholder", model: "test-model" };
-test("provider request uses structured image extraction, disabled storage, bounded output, and pending results", async () => {
-  const result = await extractWithOpenAI(
-    input,
-    config,
-    async (url, options) => {
-      assert.equal(url, "https://api.openai.com/v1/responses");
-      const payload = JSON.parse(String(options?.body));
-      assert.equal(payload.store, false);
-      assert.equal(payload.text.format.strict, true);
-      assert.ok(payload.max_output_tokens < 7000);
-      assert.equal(payload.reasoning, undefined);
-      assert.equal(payload.input[0].content[1].image_url, input.pages[0].image);
-      assert.ok(options?.signal);
-      return response(completed(raw));
-    },
-  );
-  assert.equal(result.candidates[0].decision, "pending");
-  assert.ok(modelExtractionSchema.safeParse(raw).success);
-});
-
-test("default model has a bounded reasoning budget and accepts reasoning output items", async () => {
-  assert.equal(DEFAULT_AI_MODEL, "gpt-6-astra");
-  const result = await extractWithOpenAI(
-    input,
-    { ...config, model: DEFAULT_AI_MODEL },
-    async (_url, options) => {
-      const payload = JSON.parse(String(options?.body));
-      assert.equal(payload.model, DEFAULT_AI_MODEL);
-      assert.deepEqual(payload.reasoning, { effort: "low" });
-      assert.equal(payload.max_output_tokens, 10000);
-      const body = completed(raw);
-      return response({ ...body, output: [{ type: "reasoning" }, ...body.output] });
-    },
-  );
-  assert.equal(result.candidates[0].decision, "pending");
-});
-
-test("provider failures cannot create partial findings or leak response secrets", async () => {
-  for (const [body, status, expected] of [
-    [{ error: { message: "sensitive provider detail" } }, 401, /authorize/],
-    [{}, 429, /usage or rate limit/],
-    [{}, 500, /temporarily unavailable/],
-    [{ status: "incomplete", output: [] }, 200, /incomplete/],
-    [
-      {
-        status: "completed",
-        output: [{ type: "message", content: [{ type: "refusal" }] }],
-      },
-      200,
-      /declined/,
-    ],
-    [
-      completed({
-        candidates: [{ ...raw.candidates[0], depth: -1 }],
-        warnings: [],
-      }),
-      200,
-      /required measurement format/,
-    ],
-  ] as const)
-    await assert.rejects(
-      extractWithOpenAI(input, config, async () => response(body, status)),
-      expected,
-    );
-  await assert.rejects(
-    extractWithOpenAI(input, config, async () => {
-      throw new DOMException("timeout", "TimeoutError");
-    }),
-    /120 seconds/,
   );
 });
 

@@ -7,7 +7,7 @@ Built for SaaSathon with Next.js App Router, strict TypeScript, Tailwind v4, and
 ## Run from scratch
 
 Follow these steps for the full local setup: app, database, authentication, and optional AI
-extraction. Run all commands from the repository root unless stated otherwise.
+drawing review. Run all commands from the repository root unless stated otherwise.
 
 ### 1. Install the prerequisites
 
@@ -78,14 +78,14 @@ Do not use the secret or `service_role` key in the app's public variables.
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55431
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=replace-with-the-key-from-local-status
 
-# Optional: required only for live drawing extraction.
+# Optional: required only for live AI drawing review.
 AI_API_KEY=
 AI_MODEL=gpt-6-astra
 ```
 
 Replace the placeholder with your actual **local** key. Add your OpenAI key to `AI_API_KEY`
-if you want to extract measurements from uploaded drawings. Never commit the populated file.
-See [AI extraction setup and workflow](#ai-extraction-setup-and-workflow) for access rules.
+if you want AI to review uploaded drawings. Never commit the populated file.
+See [AI drawing review setup and workflow](#ai-drawing-review-setup-and-workflow) for access rules.
 
 The ports are configured in `supabase/config.toml`:
 
@@ -255,24 +255,25 @@ and **Coverage & notes**. **Findings** contains the issue list, filters and revi
 - Report preview, browser print / Save as PDF, and structured JSON report download. Reports
   contain all findings, including filtered-out or dismissed items. Source PDF remains separate.
 - Searchable Projects library with source/status filters, sorting, revisions, and original/revised fixture drawings.
-- OpenAI page extraction, suggested source previews, editable measurement/units confirmation,
-  rejection, original evidence history, and findings generated only from confirmed inputs.
+- Six-check AI drawing review with selectable issue markers, evidence, calculations, engineer
+  confirmation/dismissal and notes. Missing general tolerances use a flagged provisional ISO 2768-m
+  default. Passing tolerances become one low-priority check; tighter-than-fine tolerances remain
+  drawing concerns. AI priorities include an explanation based on the manufacturing impact.
 
 ## Real versus fixture-backed analysis
 
 The viewer, upload validation, local persistence, configurable deterministic checks, review
-workflow, and exports are real. **OpenAI drawing extraction is connected for selected pages.**
+workflow, and exports are real. **AI drawing review is connected for selected pages.**
 
 The sample uses authored inputs that correspond to explicit callouts on the included schematic
 PDFs. “Verified” means checked against the authored fixture, not independently validated CAD or
 engineer-approved geometry. The UI and reports label the analysis as a sample. Uploading any
-other drawing starts with **zero findings**. Extract callouts and confirm their measurements to
-generate checks from that drawing, never recycled sample results.
+other drawing starts with **zero findings**. Use **Analyse drawing** to generate AI flags directly,
+then inspect the evidence and confirm or dismiss each issue. Uploaded drawings never use recycled sample results.
 
 There is no CAM simulation, tool-access proof, automated redesign, STEP geometry
-parser, shared drawing-file storage, or production certification. The missing/ambiguous-specification
-check is deferred until extraction and context are available; a missing finish note is not
-silently treated as an error.
+parser, shared drawing-file storage, or production certification. Missing specifications are flagged
+for engineer review; unreadable or unsupplied content is recorded as unassessed, not proof of absence.
 
 ### Reproducible demo
 
@@ -291,7 +292,7 @@ source dimensions, locations, and tooling assumptions before engineering conclus
 Regenerate the committed sample PDFs with `python3 scripts/create-demo-drawings.py` (requires
 `reportlab`). Their page space is 1000 × 700 PDF points, with two pages in each revision.
 
-### Initial profile
+### Legacy sample profile
 
 These are editable demonstration assumptions, not universal manufacturing limits or standards:
 
@@ -302,7 +303,8 @@ These are editable demonstration assumptions, not universal manufacturing limits
 | Corner    | Internal radius < 3 mm for a 6 mm minimum end mill |
 | Tolerance | Bilateral magnitude < ±0.025 mm                    |
 
-Only reviewer-confirmed inputs are evaluated. Confirmed inch values are converted to mm for
+These rules apply to the authored samples and previous measurement extractions. The new AI review
+uses the six checks and ISO size bands described below. In the legacy workflow, only reviewer-confirmed inputs are evaluated. Confirmed inch values are converted to mm for
 calculations; the original units are preserved in evidence. Missing measurements, zero divisors, wrong units, and
 unverified evidence are not silently converted into geometric claims. The profile's provenance
 and version are attached to findings. No automatic functional-criticality assessment is made.
@@ -319,8 +321,9 @@ Server Component supplies typed sample analysis
 
 Authored sample measurements → deterministic configurable rules → validated findings
 Uploaded PDF → selected page images + positioned text → validated Server Action
-  → OpenAI structured extraction → unverified suggestions + source previews
-  → reviewer confirmation → deterministic checks → markers / details / reports
+  → OpenAI six-check review → deterministic L/D and ISO tolerance calculations
+  → passing tolerances → one low-priority check; concerns → explained priorities
+  → unverified flags / suggested markers → engineer decisions / notes / reports
 ```
 
 - `components/forge/pdf-viewer.tsx`: rendering, transforms, pan, zoom, focus, page navigation.
@@ -334,11 +337,12 @@ Uploaded PDF → selected page images + positioned text → validated Server Act
 
 Page numbers are **one-based**. Regions use a **top-left origin on the unrotated crop box** and
 0..1 x/y/width/height. The annotation layer rotates with the PDF viewport (0/90/180/270 degrees)
-and shares the paper element's dimensions and scroll transform. Findings without verified
-locations can remain in the issue list but have no drawing marker.
+and shares the paper element's dimensions and scroll transform. AI flags can have suggested markers,
+explicitly labelled unverified; an unlocated flag still navigates to its source page. Legacy
+measurement findings require confirmed locations for markers.
 
 Analysis metadata and requirements are stored in Supabase under the verified designer's ID.
-Files stay on the device; selected page images/text are sent to OpenAI only after extraction
+Files stay on the device; selected page images/text are sent to OpenAI only after review
 consent. The full PDF and STEP file are not uploaded. Browser storage is not a file backup.
 
 Manufacturer business contact information and equipment are visible to verified users only
@@ -376,25 +380,30 @@ pages, server actions, and sign-out. They reject remote database targets.
 
 Browser verification covers PDF rendering, card-to-page navigation, marker selection, zoom/fit,
 review persistence, filters, uploaded PDF persistence without fabricated findings, and reports.
-Live verification extracted all four expected feature types from the included two-page sample.
-Browser checks also cover confirmation, rejection, separate source-location approval, saved
-extraction state, and report coverage.
+The six-check provider contract is tested with mocked responses, including refusals, errors and
+malformed output. ISO size boundaries, fine-before-medium precedence, inch conversion, blind-hole
+calculations, consolidated passing checks and priority preservation have unit coverage. This is not a measured AI accuracy benchmark.
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and [docs/handoff.md](docs/handoff.md).
 
-## AI extraction setup and workflow
+## AI drawing review setup and workflow
 
 1. Set `AI_API_KEY` in `.env.local` to your OpenAI API key. It is server-only and ignored by Git.
 2. The default is `gpt-6-astra`. Set `AI_MODEL` to override it with an image-capable model supporting
    Responses and structured outputs. GPT-6 models use low reasoning effort and a 10,000-token
    output budget (including reasoning). Restart the dev server after changing environment settings.
-3. Create a new analysis and upload a PDF. Choose **Extract with AI**, select 1–3 pages, and allow
-   their rendered images and embedded text to be sent to OpenAI. API charges may apply.
-4. Open **Measurements** and choose a suggestion from the selector (or use its arrow buttons).
-   Inspect its source preview, edit dimensions/units/callout if
-   needed, and confirm. Confirm the highlighted location separately to include a finding marker.
-   Reject incorrect feature associations; a missing/ambiguous value cannot silently become a finding.
-5. Review findings and export. Settings reruns confirmed measurements against the updated profile.
-   Extracting again explicitly replaces the previous extraction and its review decisions.
+3. Create a new analysis and upload a PDF. Choose **Analyse drawing**, select 1–3 pages (include
+   title block/general notes), and allow their images and text to be sent to OpenAI. API charges may apply.
+4. Flags appear immediately in the issue queue and on the PDF where a source can be located. Select
+   a flag, inspect the callout and calculation, add an engineer note, then **Confirm issue** or
+   **Dismiss flag**. Confirmation accepts the issue; **Mark addressed** records its resolution.
+5. Expand **Six-check results & analysis notes** to see coverage, tolerance calculations and unknowns.
+   Passing tolerances are grouped into one **low-priority** check. Each concern explains its priority.
+6. Export the report. Re-running review explicitly replaces the previous AI results and decisions.
+   Previous measurement extractions remain readable until replaced; sample tooling settings do not
+   rerun the new AI review.
+
+See [AI drawing review and tolerance rules](docs/AI_DRAWING_REVIEW.md) for the six checks, ISO
+size bands, pass/flag boundaries, priority guidance and limitations.
 
 Requests use the [Responses API](https://developers.openai.com/api/docs/guides/images-vision) and
 [strict structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
@@ -403,12 +412,12 @@ Response storage is disabled with `store: false`; this is not a zero-retention g
 
 ### Access and limits
 
-- All extraction requests require a verified **designer** and an owned, saved analysis.
+- All AI review requests require a verified **designer** and an owned, saved analysis.
   Every designer can use AI as soon as their email is verified, in local and deployed environments.
   No per-account allowlist is required; the former `AI_ALLOWED_USER_IDS` setting is ignored and can
-  be removed from Vercel. Anonymous, unverified and manufacturer accounts cannot run extraction.
+  be removed from Vercel. Anonymous, unverified and manufacturer accounts cannot run AI review.
 - Prototype limits: 3 pages per request, page images up to 1600 px (up to 1 MB base64 each),
-  at most 500 embedded text spans / 40,000 text characters per page, 24 extracted features,
+  at most 500 embedded text spans / 40,000 text characters per page, up to 24 observations per check,
   120-second provider timeout, 2 concurrent requests and 20 requests/hour per server process.
 - The limiter is in memory and resets on restart. Use a durable shared limiter and a background
   job queue before scaling deployment. Provider errors/refusals/timeouts retain the old analysis
@@ -418,12 +427,12 @@ Response storage is disabled with `store: false`; this is not a zero-retention g
   reviewer confirmation. Handwritten, crowded, rotated-text and low-resolution drawings need
   additional real-world validation. A missing finding is not a manufacturing pass.
 
-Implementation: `lib/forge/openai-extractor.ts` is the provider adapter, `app/actions/extract-drawing.ts`
-is the server boundary, `lib/forge/extraction.ts` validates/grounds/confirms data, and
-`components/forge/extraction-review.tsx` provides the page/consent/measurement review UI.
-No API keys or page-image payloads are persisted in analysis records. Structured requirements
-carry explicit/inferred/unknown provenance, supporting callouts, and independent review confirmation. Original extracted evidence
-is retained alongside confirmed edits in JSON exports.
+Implementation: `lib/forge/openai-extractor.ts` is the provider adapter; `app/actions/extract-drawing.ts`
+validates ownership; `lib/forge/drawing-review.ts` validates and grounds
+flags; `lib/forge/iso-tolerances.ts` calculates thresholds. `components/forge/drawing-review.tsx` provides page selection and
+coverage. Review metadata and decisions use the existing owner-protected analysis JSON (no migration).
+No API keys or page-image payloads are persisted in analysis records. Full manufacturer matching
+continues to use independently reviewed requirements. AI drawing review does not query shop capabilities.
 
 ## Next milestone
 

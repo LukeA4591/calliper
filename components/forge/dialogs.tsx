@@ -223,9 +223,9 @@ export function NewAnalysisDialog({
           />
         </label>
         <div className="local-note">
-          Your files are saved in this browser. After upload, choose pages for
-          AI extraction and confirm their measurements before findings are
-          created.
+          Your files are saved in this browser. After upload, analyse the
+          drawing for potential errors and manufacturing concerns, then inspect
+          each AI flag against the source.
         </div>
         {error && (
           <p className="form-error" role="alert">

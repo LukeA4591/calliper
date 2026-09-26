@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
+import { createFixture } from "../lib/forge/fixture";
+import { analysisSchema } from "../lib/forge/types";
+import { checkIds } from "../lib/forge/review-schema";
+import {
+  groundDrawingReview,
+  applyDrawingReview,
+} from "../lib/forge/drawing-review";
 export async function testManufacturingDatabase(local: Record<string, string>) {
   assert.equal(new URL(local.API_URL).hostname, "127.0.0.1");
   assert.equal(new URL(local.API_URL).port, "55431");
@@ -174,12 +181,60 @@ export async function testManufacturingDatabase(local: Record<string, string>) {
       ).error,
       null,
     );
+    const fixture = createFixture();
+    const review = groundDrawingReview(
+      {
+        pageAudits: [
+          {
+            page: 1,
+            holeCalloutCount: 0,
+            toleranceCalloutCount: 0,
+            holeScanComplete: false,
+            toleranceScanComplete: false,
+            limitations: ["Synthetic persistence test"],
+          },
+        ],
+        checks: checkIds.map((id) => ({
+          id,
+          outcome: "not_assessed",
+          summary: "Synthetic persistence test",
+          observations: [],
+        })),
+        warnings: ["Synthetic integration result; no AI request was sent."],
+      },
+      {
+        consent: true,
+        sourceFileId: fixture.pdfFileId,
+        units: "mm",
+        pages: [
+          {
+            page: 1,
+            image: "data:image/jpeg;base64,/9j/AAAA",
+            spans: [],
+            textTruncated: false,
+          },
+        ],
+      },
+      2,
+      "test-model",
+      "test-review",
+    );
     const record = {
       owner_id: ids[2],
       id: "test-analysis",
-      data: { id: "test-analysis" },
+      data: { ...applyDrawingReview(fixture, review), id: "test-analysis" },
     };
     assert.equal((await designer.from("analyses").insert(record)).error, null);
+    const savedReview = await designer
+      .from("analyses")
+      .select("data")
+      .eq("id", record.id)
+      .single();
+    assert.equal(savedReview.error, null);
+    assert.deepEqual(
+      analysisSchema.parse(savedReview.data?.data).review,
+      review.review,
+    );
     assert.equal(
       (await designer.from("analyses").select().eq("id", record.id)).data
         ?.length,
