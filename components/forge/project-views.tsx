@@ -13,12 +13,7 @@ function reviewState(analysis: Analysis) {
     : (analysis.extraction?.candidates.filter((c) => c.decision === "pending")
         .length ?? 0);
   const open = analysis.findings.filter((f) => f.status === "open").length;
-  const reviewed = analysis.findings.filter((f) =>
-    f.ai ? f.ai.decision !== "pending" : f.status !== "open",
-  ).length;
-  const high = analysis.findings.filter(
-    (f) => f.status === "open" && f.severity === "high",
-  ).length;
+  const total = analysis.findings.length;
   const unanalysed =
     analysis.mode === "uploaded" && !analysis.extraction && !analysis.review;
   const status = unanalysed
@@ -30,12 +25,12 @@ function reviewState(analysis: Analysis) {
         : "reviewed";
   const label = unanalysed
     ? "Ready for AI review"
-    : pending
-      ? `${pending} pending ${analysis.review ? "AI flag" : "measurement"}${pending === 1 ? "" : "s"}`
-      : open
-        ? `${open} open finding${open === 1 ? "" : "s"}`
-        : "No outstanding reviews";
-  return { pending, open, reviewed, high, unanalysed, status, label };
+    : !analysis.review && pending
+      ? `${pending} pending measurement${pending === 1 ? "" : "s"}`
+      : total
+        ? `${total} issue${total === 1 ? "" : "s"} found`
+        : "No issues found";
+  return { pending, open, unanalysed, status, label };
 }
 
 function dateLabel(value: string) {
@@ -131,7 +126,7 @@ export function ProjectLibrary({
               <option value="all">All statuses</option>
               <option value="not-started">Ready for AI review</option>
               <option value="pending">Awaiting review</option>
-              <option value="open">Open findings</option>
+              <option value="open">Open issues</option>
               <option value="reviewed">No outstanding reviews</option>
             </select>
           </label>
@@ -160,14 +155,13 @@ export function ProjectLibrary({
             <thead>
               <tr>
                 <th scope="col">Drawing / revision</th>
-                <th scope="col">Review status</th>
-                <th scope="col">Findings</th>
+                <th scope="col">Issues identified</th>
                 <th scope="col">Created</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(
-                ({ project, label, high, open, reviewed, status }) => {
+                ({ project, label, status }) => {
                   const a = project.analysis;
                   return (
                     <tr key={a.id}>
@@ -196,17 +190,6 @@ export function ProjectLibrary({
                           }`}
                         >
                           {label}
-                        </span>
-                        {high > 0 && (
-                          <span className="library-priority">
-                            {high} high priority
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {open} open
-                        <span className="library-meta">
-                          {reviewed} reviewed · {a.findings.length} total
                         </span>
                       </td>
                       <td>

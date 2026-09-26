@@ -1,6 +1,6 @@
 "use client";
 import { Brand } from "@/components/brand";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownToLine,
@@ -25,17 +25,20 @@ import { saveAnalysis } from "@/app/actions/analyses";
 import { signOut } from "@/app/login/actions";
 import { validatePdf } from "@/lib/forge/pdf";
 import { ProjectLibrary, type Project } from "./project-views";
+import { ManufacturingPlan } from "./manufacturing-plan";
 
 export function ForgeWorkspace({
   aiConfigured,
   userId,
   email,
   savedAnalyses,
+  initialProjectId,
 }: {
   userId: string;
   email: string;
   savedAnalyses: { analysis: Analysis; updatedAt: string }[];
   aiConfigured: boolean;
+  initialProjectId?: string;
 }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [projects, setProjects] = useState<Project[]>(savedAnalyses);
@@ -54,12 +57,13 @@ export function ForgeWorkspace({
   const [notice, setNotice] = useState("");
   const [storageError, setStorageError] = useState("");
   const saveQueue = useRef(Promise.resolve());
+  const requested = useRef(false);
   const sequence = useRef(0);
   const selectedIndex =
     analysis?.findings.findIndex((f) => f.id === selectedId) ?? -1;
   const selected = analysis?.findings[selectedIndex];
 
-  function openProject(project: Project) {
+  const openProject = useCallback((project: Project) => {
     setAnalysis(project.analysis);
     setSelectedId(null);
     setFocusRequest(null);
@@ -67,7 +71,7 @@ export function ForgeWorkspace({
     setSource(project.pdf ? URL.createObjectURL(project.pdf) : "");
     setView("analysis");
     setModal(null);
-  }
+  }, []);
   async function saveProject(
     next: Analysis,
     files?: { pdf?: Blob; step?: Blob },
@@ -101,6 +105,15 @@ export function ForgeWorkspace({
           });
         }
         setProjects([...merged.values()]);
+        // Returning from the manufacturer directory reopens that project, once its
+        // local file is available to the viewer.
+        const wanted = initialProjectId
+          ? merged.get(initialProjectId)
+          : undefined;
+        if (wanted && !requested.current) {
+          requested.current = true;
+          openProject(wanted);
+        }
         if (!cancelled)
           setStorage("Analysis saved to account · files on this device");
       })
@@ -117,7 +130,7 @@ export function ForgeWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [userId, savedAnalyses]);
+  }, [userId, savedAnalyses, initialProjectId, openProject]);
   useEffect(
     () => () => {
       if (source.startsWith("blob:")) URL.revokeObjectURL(source);
@@ -271,6 +284,7 @@ export function ForgeWorkspace({
                   </Button>
                 </div>
               </header>
+              <ManufacturingPlan analysis={analysis} />
               {!source && analysis.mode === "uploaded" && (
                 <div className="account-save-error">
                   <p>
@@ -450,12 +464,12 @@ export function ForgeWorkspace({
                       <div className="detected-issues-empty">
                         <h3>
                           {analysis.review
-                            ? "No issues detected"
+                            ? "No issues detected — looks good to go"
                             : "Ready to analyse"}
                         </h3>
                         <p>
                           {analysis.review
-                            ? "See Analysis notes for coverage and any areas that could not be assessed."
+                            ? "Nothing was flagged across the six checks on the reviewed pages. See Analysis notes for coverage and anything that could not be assessed."
                             : "Run AI analysis to find missing specifications and manufacturing concerns."}
                         </p>
                       </div>

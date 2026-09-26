@@ -12,9 +12,16 @@
 .forge-app summary {
   cursor: pointer;
 }
+/* A disabled action still has to read as a button. The component's own disabled
+   fill is near-white, which disappears on a white dialog, so shared Buttons get a
+   visible surface and outline here. Icon-only toolbar buttons keep their own look. */
 .forge-app button:disabled {
   cursor: not-allowed;
-  color: var(--disabled);
+  color: var(--text-secondary);
+}
+.forge-app button.rounded-md:disabled {
+  background: color-mix(in srgb, var(--ink) 12%, var(--surface));
+  border-color: var(--disabled);
 }
 .forge-app button:focus-visible,
 .forge-app a:focus-visible,
@@ -1987,16 +1994,6 @@
   margin: 0 auto;
   padding: var(--space-5) var(--space-4);
 }
-.account-page > h1 {
-  font-size: 32px;
-  font-weight: 500;
-  letter-spacing: -1px;
-}
-.account-intro {
-  color: var(--muted);
-  margin: var(--space-2) 0 var(--space-4);
-  max-width: 740px;
-}
 .account-form {
   display: grid;
   gap: var(--space-3);
@@ -2410,18 +2407,72 @@
 .review-switch button[aria-pressed="true"] > span { background: var(--surface); color: var(--accent); }
 .library-table tbody tr:hover { background: var(--accent-fill); }
 .upload-zone { background: var(--accent-fill); border-color: var(--accent); }
-.auth-page {
-  max-width: 560px;
-  margin: var(--space-5) auto;
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 4%, transparent);
+/* Account pages share the workspace shell: one navigation bar, an accent hero, one content column. */
+.auth-app .auth-hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--accent);
+  color: var(--surface);
 }
-.auth-page .account-links { gap: var(--space-2); }
+.auth-app .auth-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.09;
+  background-image:
+    linear-gradient(to right, white 1px, transparent 1px),
+    linear-gradient(to bottom, white 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to right, transparent, black);
+}
+.auth-hero-inner {
+  max-width: 1280px;
+  margin: auto;
+  padding: 48px 32px;
+}
+.auth-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+}
+.auth-hero-inner h1 {
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+  margin: 8px 0 0;
+}
+.auth-hero-copy {
+  max-width: 560px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.auth-app .auth-content {
+  max-width: 1280px;
+  margin: auto;
+  padding: 48px 32px;
+}
+.auth-panel {
+  max-width: 520px;
+}
+.auth-panel > :first-child {
+  margin-top: 0;
+}
+.auth-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
 @media (max-width: 640px) {
-  .auth-page { margin: var(--space-3) var(--space-2); padding: var(--space-3); }
+  .auth-hero-inner { padding: 28px 16px; }
+  .auth-app .auth-content { padding: 32px 16px; }
+  .auth-app .auth-nav-actions { grid-area: 1 / 2; justify-self: end; margin: 0; }
   .app-navigation {
     display: grid;
     grid-template-columns: 1fr auto;

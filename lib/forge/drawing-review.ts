@@ -5,7 +5,10 @@ import {
   checkIdSchema,
   checkLabels,
   pageAuditSchema,
+  planMaterialSchema,
+  processRecommendationSchema,
   type DrawingReview,
+  type ManufacturingPlan,
 } from "./review-schema";
 import {
   regionSchema,
@@ -22,6 +25,11 @@ export const reviewInputSchema = extractionInputSchema.extend({
 const dimension = z.number().min(0).max(1_000_000).nullable();
 export const modelReviewSchema = z.object({
   pageAudits: z.array(pageAuditSchema).min(1).max(3),
+  manufacturing: z.object({
+    summary: z.string().min(1).max(1000),
+    processes: z.array(processRecommendationSchema).max(8),
+    material: planMaterialSchema,
+  }),
   checks: z
     .array(
       z.object({
@@ -142,6 +150,26 @@ function findMachinedFinish(pages: ExtractionInput["pages"]) {
   }
   return undefined;
 }
+export function groundManufacturingPlan(
+  raw: ModelReview["manufacturing"],
+): ManufacturingPlan {
+  const order = { primary: 0, secondary: 1, alternative: 2 };
+  const byProcess = new Map<string, ManufacturingPlan["processes"][number]>();
+  for (const entry of raw.processes) {
+    const seen = byProcess.get(entry.process);
+    // A process recommended twice keeps the more significant role.
+    if (!seen || order[entry.role] < order[seen.role])
+      byProcess.set(entry.process, entry);
+  }
+  const stated = raw.material.stated?.trim();
+  return {
+    summary: raw.summary.trim(),
+    processes: [...byProcess.values()].sort(
+      (a, b) => order[a.role] - order[b.role],
+    ),
+    material: { stated: stated || null, quote: raw.material.quote.trim() },
+  };
+}
 export function groundDrawingReview(
   raw: ModelReview,
   input: ExtractionInput,
@@ -164,6 +192,11 @@ export function groundDrawingReview(
       warnings.push(`Page ${audit.page}: tolerance callout scan incomplete.`);
   }
   const findings: Finding[] = [];
+  const manufacturing = groundManufacturingPlan(raw.manufacturing);
+  if (!manufacturing.processes.length)
+    warnings.push(
+      "No manufacturing process could be recommended from the supplied pages. Choose processes yourself when searching the directory.",
+    );
   const tolerances: DrawingReview["tolerances"] = [];
   const partial = input.pages.length !== totalPages;
   if (partial)
@@ -267,12 +300,16 @@ export function groundDrawingReview(
             assessed?.summary ??
             "Manual tolerance review required: nominal size, units or supported linear bilateral tolerance could not be established. Angular, GD&T, fit classes, asymmetric limits and broken edges require separate interpretation.",
         });
-        if (assessed?.outcome === "pass") continue;
-        calculation = tolerances[toleranceIndex].summary;
-        if (assessed) {
-          measurements.nominal = { value: item.nominal!, unit: item.unit };
-          measurements.tolerance = { value: item.tolerance!, unit: item.unit };
+        // Only a tighter-than-fine callout is a manufacturing concern. A callout that
+        // states values and passes, and one this screen cannot evaluate, are both recorded
+        // as coverage without raising an issue; an unevaluated one marks the check incomplete.
+        if (assessed?.outcome !== "tight") {
+          if (!assessed) skipped = true;
+          continue;
         }
+        calculation = tolerances[toleranceIndex].summary;
+        measurements.nominal = { value: item.nominal!, unit: item.unit };
+        measurements.tolerance = { value: item.tolerance!, unit: item.unit };
       }
       if (id === "general_tolerance")
         calculation =
@@ -318,11 +355,7 @@ export function groundDrawingReview(
       findings.push({
         id: `${runId}-${findings.length + 1}`,
         ruleId: `REVIEW-${id}`,
-        title:
-          id === "tight_tolerance" &&
-          tolerances[toleranceIndex!]?.outcome === "manual_review"
-            ? "Tolerance needs manual interpretation"
-            : titles[id],
+        title: titles[id],
         severity:
           correctedHoleDecision && item.priority === "low"
             ? "medium"
@@ -427,56 +460,6 @@ export function groundDrawingReview(
                 : check.summary,
     };
   });
-  // One low-priority check for the supported callouts within the standard range.
-  // Keep any tight or unsupported callouts as separate concerns.
-  const passing = tolerances.filter(
-    (t) => t.outcome === "pass" && t.toleranceMm! <= t.mediumMm!,
-  );
-  if (passing.length) {
-    const id = `${runId}-${findings.length + 1}`;
-    findings.push({
-      id,
-      ruleId: "REVIEW-tolerance-pass",
-      title: "Tolerance check — within ISO range",
-      severity: "low",
-      status: "open",
-      ruleProfileVersion: "drawing-review-1",
-      description: `${passing.length} assessed linear tolerance${passing.length === 1 ? " is" : "s are"} within ISO 2768-m and not tighter than ISO 2768-f. Grouped into one check; other callouts may still need review.`,
-      manufacturingImpact:
-        "No tight-tolerance concern identified for these callouts. Confirm the AI readings against the drawing.",
-      recommendedActions: [
-        "Check the listed nominal dimensions, units and tolerance values.",
-      ],
-      calculation: passing
-        .map((t) => `Page ${t.page}: ${t.summary}`)
-        .join("\n"),
-      assumptions: [
-        "Covers only the listed linear symmetric callouts. Does not certify the whole drawing or part.",
-        ...(partial ? ["Only selected pages were reviewed."] : []),
-      ],
-      ai: {
-        checkId: "tight_tolerance",
-        result: "pass",
-        page: passing[0].page,
-        locationSource: "none",
-        decision: "pending",
-        reviewerNote: "",
-        priorityReason:
-          "Low priority: these callouts pass the tolerance screen; only the AI readings need confirmation.",
-      },
-      evidence: passing.map((t) => ({
-        sourceFileId: input.sourceFileId,
-        text: `Page ${t.page}: ${t.quote}`,
-        status: "extracted_unverified",
-        provenance: "ai_extracted",
-        measurements: {
-          nominal: { value: t.nominalMm!, unit: "mm" },
-          tolerance: { value: t.toleranceMm!, unit: "mm" },
-        },
-      })),
-    });
-    for (const tolerance of passing) tolerance.findingId = id;
-  }
   return {
     findings,
     review: {
@@ -494,6 +477,7 @@ export function groundDrawingReview(
         ? "ISO 2768-m"
         : null,
       tolerances,
+      manufacturing,
       checks,
       warnings: warnings.slice(0, 100),
     },
@@ -530,6 +514,8 @@ export function reviewAiFinding(
             status:
               decision === "rejected"
                 ? ("dismissed" as const)
+                // A pass finding only exists in analyses saved before passing
+                // tolerances stopped raising an issue.
                 : decision === "confirmed" &&
                     (f.status === "addressed" || f.ai.result === "pass")
                   ? ("addressed" as const)

@@ -14,6 +14,10 @@ import {
   type ModelReview,
 } from "../lib/forge/drawing-review";
 import { checkIds } from "../lib/forge/review-schema";
+import {
+  alternativeProcesses,
+  requiredProcesses,
+} from "../lib/manufacturing/recommendations";
 import { createFixture } from "../lib/forge/fixture";
 import {
   analysisSchema,
@@ -66,6 +70,24 @@ const observation: ModelReview["checks"][number]["observations"][number] = {
 };
 function raw(): ModelReview {
   return {
+    manufacturing: {
+      summary: "Prismatic bracket from plate with a finishing operation.",
+      material: { stated: "Aluminium 6061-T6", quote: "MATERIAL: ALUMINIUM 6061-T6" },
+      processes: [
+        {
+          process: "cnc_milling_3_axis",
+          role: "primary",
+          reason: "Prismatic part with pockets and holes on one face.",
+          limitations: ["Stock size is not stated."],
+        },
+        {
+          process: "surface_grinding",
+          role: "secondary",
+          reason: "The locating face carries a tight tolerance.",
+          limitations: [],
+        },
+      ],
+    },
     pageAudits: [
       {
         page: 1,
@@ -332,8 +354,19 @@ test("explicit fine violations remain drawing concerns; unsupported tolerances s
   assert.equal(v.review.tolerances[0].fineMm, 0.15);
   assert.ok(v.review.tolerances[0].findingId);
   assert.equal(v.review.tolerances[1].outcome, "manual_review");
-  assert.equal(v.findings.length, 3);
-  assert.match(v.findings[2].title, /manual interpretation/);
+  assert.equal(v.review.tolerances[1].findingId, undefined);
+  assert.equal(v.findings.length, 2);
+  assert.equal(
+    v.findings.filter((f) => f.ai?.checkId === "tight_tolerance").length,
+    1,
+    "Only the tighter-than-fine callout becomes an issue",
+  );
+  // The tight callout flags the check; the unevaluated one is reported as a warning.
+  assert.equal(v.review.checks[5].outcome, "flagged");
+  assert.ok(
+    v.review.warnings.some((w) => w.includes("Tight tolerance")),
+    "An unevaluated callout is reported as incomplete coverage",
+  );
 });
 test("invented pages and invalid regions cannot create markers; skipped evidence cannot silently pass", () => {
   const r = raw();
@@ -431,48 +464,49 @@ test("Machined in a finish field suppresses a mistaken missing-finish flag", () 
     assert.ok(result.findings.some((f) => f.ai?.checkId === "surface_finish"));
   }
 });
-test("passing tolerances form one low-priority check while tight and unsupported callouts remain separate", () => {
-  const r = raw();
-  r.checks[5].observations = [0.1, 0.15, 0.01].map((tolerance) => ({
+test("a defined, passing tolerance raises no issue and is kept as coverage only", () => {
+  const linear = (tolerance: number) => ({
     ...observation,
     quote: `10 ±${tolerance}`,
     nominal: 10,
     tolerance,
-    toleranceKind: "linear_symmetric",
-  }));
+    toleranceKind: "linear_symmetric" as const,
+  });
+  const r = raw();
+  r.checks[5].observations = [0.1, 0.15, 0.01].map(linear);
   const result = ground(r);
-  const passing = result.findings.filter((f) => f.ai?.result === "pass");
-  assert.equal(passing.length, 1);
-  assert.equal(passing[0].severity, "low");
-  assert.equal(passing[0].evidence.length, 2);
   assert.equal(
-    result.review.tolerances.filter((t) => t.outcome === "tight").length,
-    1,
-  );
-  assert.equal(result.review.shopChecks, undefined);
-  const saved = analysisSchema.parse(
-    applyDrawingReview(createFixture(), result),
-  );
-  assert.equal(
-    reviewAiFinding(saved, passing[0].id, {
-      decision: "confirmed",
-      note: "Callouts checked",
-    }).findings.find((f) => f.id === passing[0].id)?.status,
-    "addressed",
-  );
-  r.checks[5].observations = [
-    {
-      ...observation,
-      quote: "10 ±0.3",
-      nominal: 10,
-      tolerance: 0.3,
-      toleranceKind: "linear_symmetric",
-    },
-  ];
-  assert.equal(
-    ground(r).findings.some((f) => f.ai?.result === "pass"),
+    result.findings.some((f) => f.ai?.result === "pass"),
     false,
-    "Looser explicit overrides are not labelled within the standard range",
+    "Passing callouts must not become an issue",
+  );
+  assert.equal(
+    result.findings.filter((f) => f.ai?.checkId === "tight_tolerance").length,
+    1,
+    "Only the tighter-than-fine callout remains a concern",
+  );
+  const passing = result.review.tolerances.filter((t) => t.outcome === "pass");
+  assert.equal(passing.length, 2);
+  assert.ok(
+    passing.every((t) => t.findingId === undefined),
+    "A passing callout has no finding to link to",
+  );
+  assert.equal(result.review.checks[5].outcome, "flagged");
+  assert.equal(result.review.shopChecks, undefined);
+  const allPassing = raw();
+  // A looser-than-medium explicit callout also passes: the drawing value takes precedence.
+  allPassing.checks[5].observations = [0.1, 0.15, 0.3].map(linear);
+  const clean = ground(allPassing);
+  assert.equal(
+    clean.findings.some((f) => f.ai?.checkId === "tight_tolerance"),
+    false,
+  );
+  assert.equal(clean.review.checks[5].outcome, "pass");
+  const saved = analysisSchema.parse(applyDrawingReview(createFixture(), clean));
+  assert.equal(saved.review?.tolerances.length, 3);
+  assert.equal(
+    saved.findings.filter((f) => f.ai?.checkId === "tight_tolerance").length,
+    0,
   );
 });
 test("concerns retain evidence-based priorities and their explanation", () => {
@@ -550,7 +584,18 @@ test("Responses request uses images, all six checks, strict output, bounded reas
       assert.match(instructions, /untrusted/);
       assert.match(instructions, /nominal dimension/);
       const policy = JSON.parse(instructions);
-      assert.equal(policy.version, "drawing-review-prompt-2");
+      assert.equal(policy.version, "drawing-review-prompt-5");
+      assert.match(
+        policy.manufacturingRecommendations,
+        /copied exactly as the drawing states it/,
+      );
+      assert.match(policy.manufacturingRecommendations, /cnc_milling_5_axis/);
+      assert.match(policy.manufacturingRecommendations, /never a process that is irrelevant/);
+      assert.ok(p.text.format.schema.required.includes("manufacturing"));
+      assert.match(
+        policy.checks.tight_tolerance,
+        /Only a callout tighter than ISO 2768-f becomes an issue/,
+      );
       assert.match(
         policy.checks.blind_hole_ratio,
         /EVERY distinct hole callout/,
@@ -588,4 +633,112 @@ test("provider failure, timeout, refusal and malformed output preserve previous 
     }),
     /120 seconds/,
   );
+});
+test("manufacturing recommendations are deduplicated, ordered by role and persist with the analysis", () => {
+  const r = raw();
+  r.manufacturing.processes = [
+    {
+      process: "surface_grinding",
+      role: "secondary",
+      reason: "Tight locating face.",
+      limitations: [],
+    },
+    {
+      process: "cnc_milling_3_axis",
+      role: "alternative",
+      reason: "Duplicate with a weaker role.",
+      limitations: [],
+    },
+    {
+      process: "cnc_milling_3_axis",
+      role: "primary",
+      reason: "Prismatic plate part.",
+      limitations: ["Stock size not stated."],
+    },
+    {
+      process: "wire_edm",
+      role: "alternative",
+      reason: "Could cut the profile instead.",
+      limitations: [],
+    },
+  ];
+  const plan = ground(r).review.manufacturing!;
+  assert.deepEqual(
+    plan.processes.map((entry) => `${entry.process}:${entry.role}`),
+    [
+      "cnc_milling_3_axis:primary",
+      "surface_grinding:secondary",
+      "wire_edm:alternative",
+    ],
+    "One entry per process, most significant role first",
+  );
+  assert.deepEqual(requiredProcesses(plan), [
+    "cnc_milling_3_axis",
+    "surface_grinding",
+  ]);
+  assert.deepEqual(alternativeProcesses(plan), ["wire_edm"]);
+  const saved = analysisSchema.parse(
+    applyDrawingReview(createFixture(), ground(r)),
+  );
+  assert.deepEqual(
+    saved.review?.manufacturing?.processes.map((e) => e.process),
+    ["cnc_milling_3_axis", "surface_grinding", "wire_edm"],
+    "Recommendations round-trip through the saved analysis",
+  );
+});
+test("an unsupported process identifier is rejected and an empty plan warns instead of guessing", () => {
+  const invalid = raw();
+  // @ts-expect-error the model cannot introduce a process the database lacks
+  invalid.manufacturing.processes[0].process = "five_axis_milling";
+  assert.equal(modelReviewSchema.safeParse(invalid).success, false);
+  const empty = raw();
+  empty.manufacturing = {
+    summary: "Views do not show the full form.",
+    processes: [],
+    material: { stated: null, quote: "" },
+  };
+  const result = ground(empty);
+  assert.deepEqual(result.review.manufacturing?.processes, []);
+  assert.ok(
+    result.review.warnings.some((w) =>
+      w.includes("No manufacturing process could be recommended"),
+    ),
+  );
+});
+test("a review saved before manufacturing recommendations still loads", () => {
+  const saved = analysisSchema.parse(
+    applyDrawingReview(createFixture(), ground()),
+  );
+  const legacy = {
+    ...saved,
+    review: { ...saved.review!, manufacturing: undefined },
+  };
+  const parsed = analysisSchema.safeParse(legacy);
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data?.review?.manufacturing, undefined);
+});
+test("the stated material is carried into the plan and never invented", () => {
+  const r = raw();
+  r.manufacturing.material = {
+    stated: "  Aluminium 6061-T6  ",
+    quote: " MATERIAL: ALUMINIUM 6061-T6 ",
+  };
+  const plan = ground(r).review.manufacturing!;
+  assert.equal(plan.material?.stated, "Aluminium 6061-T6");
+  assert.equal(plan.material?.quote, "MATERIAL: ALUMINIUM 6061-T6");
+  const absent = raw();
+  absent.manufacturing.material = { stated: "   ", quote: "" };
+  assert.equal(ground(absent).review.manufacturing?.material?.stated, null);
+  const saved = analysisSchema.parse(applyDrawingReview(createFixture(), ground(r)));
+  assert.equal(saved.review?.manufacturing?.material?.stated, "Aluminium 6061-T6");
+  // A plan saved before material recommendations still loads.
+  const legacy = analysisSchema.safeParse({
+    ...saved,
+    review: {
+      ...saved.review!,
+      manufacturing: { summary: "x", processes: [] },
+    },
+  });
+  assert.equal(legacy.success, true);
+  assert.equal(legacy.data?.review?.manufacturing?.material, undefined);
 });

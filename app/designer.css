@@ -244,7 +244,11 @@
 .designer-app .drawing-back:hover {
   background: rgba(255, 255, 255, 0.12);
 }
-.designer-app .drawing-actions button {
+/* The heading sits on accent blue, so its own controls are white on transparent.
+   Direct children only: the review dialog renders inside these controls, and a
+   descendant selector would repaint its buttons white on a white dialog. */
+.designer-app .drawing-actions > button,
+.designer-app .drawing-analysis-controls > button {
   background: transparent;
   color: var(--surface);
   border-color: rgba(255, 255, 255, 0.35);
@@ -254,10 +258,15 @@
   color: var(--accent);
   border-color: transparent;
 }
-.designer-app .drawing-actions button:disabled {
+.designer-app .drawing-actions > button:disabled,
+.designer-app .drawing-analysis-controls > button:disabled {
   opacity: 0.55;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.35);
 }
-.designer-app .drawing-heading button:focus-visible {
+.designer-app .drawing-back:focus-visible,
+.designer-app .drawing-actions > button:focus-visible,
+.designer-app .drawing-analysis-controls > button:focus-visible {
   outline-color: var(--surface);
 }
 .designer-app .drawing-explorer {
@@ -473,7 +482,8 @@
   .designer-app .drawing-actions {
     gap: 4px;
   }
-  .designer-app .drawing-actions button {
+  .designer-app .drawing-actions > button,
+  .designer-app .drawing-analysis-controls > button {
     font-size: 11px;
   }
 }
@@ -493,4 +503,84 @@
     font-size: 11px;
     padding-inline: 8px;
   }
+}
+
+/* Recommended processes sit above the drawing: a route to the directory, not a
+   capability claim. Manufacturer data stays in the directory. */
+.designer-app .manufacturing-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 14px 5%;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-fill);
+}
+.manufacturing-plan .plan-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.manufacturing-plan h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.manufacturing-plan .plan-processes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.manufacturing-plan .plan-processes li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.manufacturing-plan .plan-processes span {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.manufacturing-plan .plan-summary {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 70ch;
+}
+.manufacturing-plan .plan-action {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .designer-app .manufacturing-plan {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  .manufacturing-plan .plan-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.manufacturing-plan .plan-material {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.manufacturing-plan .plan-material strong {
+  font-weight: 500;
+  color: var(--ink);
 }

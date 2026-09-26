@@ -47,12 +47,14 @@ up ISO 2768-1:1989 Table 1 by nominal dimension. Values below are ± magnitudes 
 Evaluate **tighter than fine first**: it is also numerically within medium.
 
 - Tolerance < fine: create a drawing review concern explaining the tighter-than-fine callout.
-- Fine ≤ tolerance ≤ medium: group these callouts into one low-priority check, subject to confirming the AI readings.
+- Fine ≤ tolerance ≤ medium: the tolerance is defined and passes. No issue is created; the callout and its calculation are recorded as coverage only.
 - Tolerance > medium: no tight-tolerance concern. The explicit looser drawing tolerance applies.
 - Equal fine is not tighter than fine. Band upper bounds are inclusive.
 - Missing nominal/units, sizes outside the supported fine bands, angular/GD&T, fit classes,
-  asymmetric/unilateral limits, external radii and chamfer heights require manual interpretation.
-  They do not silently pass or receive a guessed threshold.
+  asymmetric/unilateral limits, external radii and chamfer heights cannot be evaluated by this
+  screen. They raise no issue: the callout is recorded as `manual_review` coverage, the check
+  reports `not_assessed` and a warning names it, so it is never presented as a clean pass or
+  given a guessed threshold.
 
 Example: 40 ±0.1 mm is tighter than fine (±0.15 mm), so it remains a drawing concern even though
 it is also within medium (±0.3 mm). 40 ±0.2 mm passes the tolerance screen.
@@ -61,11 +63,55 @@ Sources: [ISO standard scope](https://www.iso.org/standard/7748.html),
 [published ISO 2768 tables from CSL metrology](https://www.csl-imt.ch/en/knowledge/iso-2768-tolerance-tables/),
 [AS 1100.101 metadata](https://codehub.building.govt.nz/resources/as-1100-101-1992).
 
+## Manufacturing recommendations
+
+Alongside the six checks, the model returns a `manufacturing` object: a short summary and up to
+eight process recommendations. Each carries a process identifier, a role, an evidence-based reason
+and its limitations.
+
+Identifiers come from `processSchema` in `lib/manufacturing/schemas.ts` — the same enum the database
+columns and the directory filters use — so AI output, storage and filtering cannot drift apart. The
+readable process name is derived from `processLabels`, never taken from model text. A process the
+database does not define fails schema validation and rejects the response.
+
+Roles decide how a manufacturer is matched:
+
+- `primary` — required to produce the main form.
+- `secondary` — a required follow-on operation, such as grinding a toleranced face.
+- `alternative` — a different route that could produce the part instead.
+
+Primary and secondary processes are required; alternatives can substitute for a required process
+the manufacturer lacks, and a manufacturer never has to offer every alternative. `groundManufacturingPlan`
+keeps one entry per process, retaining the most significant role, and orders primary first. An empty
+list is recorded with a warning rather than a guess.
+
+The plan also carries `material`: the grade copied exactly as the drawing states it with its
+supporting quote, or `null` when the readable content specifies none. The prompt forbids inferring a
+material from the process, the part's appearance, a filename or a project default, and forbids
+turning a stated family into a specific grade. It is the same evidence as the `material` check.
+
+The directory treats the drawing's stated material as evidence and falls back to the project's own
+material setting only when the drawing states none. Comparison is family-aware, because businesses
+declare families while drawings state grades: a declared value matches when it leads the required
+one in either token order, so `Aluminium` covers `Aluminium 6061-T6` as a family match needing grade
+confirmation, while `Steel` does not cover `Stainless steel 304`. An absent material list is
+reported as undeclared rather than assumed either way.
+
+The plan is stored in the review, so it persists in `analyses.data` with everything else and is
+replaced when the review is rerun. Reviews saved before this feature have no `manufacturing` field;
+it is optional, and those analyses load unchanged.
+
+The prompt forbids inventing dimensions, materials, tolerances or features, forbids naming any
+company, supplier or machine brand, and states that recommendations are suggestions for an engineer
+to confirm rather than a manufacturing plan, quote or guarantee.
+
 ## Priority and review
 
-Passing callouts appear together in one low-priority check. It lists each callout and calculation,
-uses a labelled success status, and becomes reviewed when the engineer selects **Confirm check**.
-Tight or unsupported callouts remain separate concerns, so a passing subset does not approve the drawing.
+Only a callout tighter than fine becomes an issue. Every other stated tolerance — one that passes,
+and one this screen cannot evaluate — raises no issue at all. Its callout and calculation are
+listed under **Six-check results & analysis notes**, and the check reports a `pass` outcome. Tight or
+unsupported callouts remain separate concerns, so a passing subset does not approve the drawing. When
+no check produces an issue, the issue queue says no issues were detected; that is not approval either.
 
 The model assigns high, medium or low priority to each concern and explains the visible impact:
 
@@ -77,7 +123,7 @@ The model assigns high, medium or low priority to each concern and explains the 
 
 Uncertainty alone does not justify high priority. A tight tolerance or deep hole alone does not
 establish impossibility. Priorities are AI suggestions for engineer review, not certified risk ratings.
-The server always assigns the consolidated passing check low priority. No forced mix of severities is required.
+No forced mix of severities is required.
 
 The AI review does not query shop profiles or display tolerance capability screening. Full manufacturer
 matching remains an independent workflow. Older saved shop snapshots are readable for compatibility,
@@ -98,8 +144,10 @@ Every returned hole is evaluated even when the model says `not_flagged` or `not_
 The server calculates blind-hole L/D and raises values strictly above 3. Exactly 3 and through
 holes do not trigger. Unknown units/dimensions remain unassessed. The prompt recognises an explicit
 finite hole-depth callout/depth symbol as possible blind-hole evidence without requiring the word
-BLIND; ambiguous geometry must remain unknown. Machined finish and consolidated low-priority
-tolerance checks remain part of the policy. Prompt version and audits are saved in report JSON.
+BLIND; ambiguous geometry must remain unknown. The machined-finish convention and the no-issue
+outcome for defined, passing tolerances remain part of the policy. The complete tolerance inventory is
+still requested, because the deterministic screen and the page audits depend on it. Prompt version and
+audits are saved in report JSON.
 
 Structured output constrains the format, not recognition accuracy. See the official
 [Structured Outputs guidance](https://developers.openai.com/api/docs/guides/structured-outputs).

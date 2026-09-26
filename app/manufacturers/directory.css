@@ -565,3 +565,124 @@
     padding: 10px 8px;
   }
 }
+
+/* Arriving from a project: what we are matching, and the way back. */
+.directory-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--accent-fill);
+}
+.directory-context h2 {
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 6px 0;
+}
+.directory-context h2 span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+.directory-context-detail {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 80ch;
+}
+.directory-process-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.directory-process-filters > span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.directory-process-filters ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.directory-process-filters li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.directory-process-filters li button {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+.directory-process-filters li button:hover {
+  color: var(--ink);
+  background: var(--accent-fill);
+}
+.directory-process-filters small {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.capability-match {
+  align-self: start;
+  padding: 6px 12px;
+  margin-bottom: 16px;
+  font-size: 11px;
+  border-radius: var(--radius-md);
+}
+.capability-full {
+  color: var(--success);
+  background: var(--success-fill);
+}
+.capability-partial {
+  color: var(--warning);
+  background: var(--warning-fill);
+}
+.capability-none {
+  color: var(--text-secondary);
+  background: var(--accent-fill);
+}
+.capability-confirm {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  list-style: disc;
+  padding-left: 16px;
+}
+@media (max-width: 640px) {
+  .directory-context {
+    padding: 16px;
+  }
+}
+.capability-material-supported {
+  color: var(--success);
+  background: var(--success-fill);
+}
+.capability-material-family,
+.capability-material-undeclared {
+  color: var(--warning);
+  background: var(--warning-fill);
+}
+.capability-material-not_listed {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}

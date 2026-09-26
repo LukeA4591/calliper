@@ -98,3 +98,31 @@ Verified at desktop and 390 px mobile widths with no horizontal overflow. Browse
 measurement selection/page navigation, editing and confirmation, findings filters, saved reviews,
 coverage notes, empty uploaded drawings, consent controls, and project navigation. Lint, strict
 typecheck, all 18 tests, production build and dedicated local Supabase integration checks pass.
+
+## Milestone 6 — project-based manufacturer recommendations
+
+- The six-check review also returns a `manufacturing` plan: a summary plus up to eight process
+  recommendations with a role (primary / secondary / alternative), an evidence-based reason and
+  limitations. Identifiers are the database process enum, so AI output, storage and directory
+  filters share one definition; readable names come from `processLabels`, never from model text.
+- The plan is stored inside the review, so it persists with the analysis and is replaced on rerun.
+  It is optional: analyses reviewed before this milestone load unchanged with no plan.
+- A compact band above the drawing lists the recommended processes and links to the directory.
+  Manufacturer capability screening stays out of the drawing viewer.
+- `/manufacturers?processes=<ids>&project=<id>` filters the directory to those processes. Unsupported
+  identifiers are discarded, and the project name, material and tolerance are read from the owner's
+  saved analysis rather than the query string. The directory keeps its own behaviour when opened
+  directly.
+- A business qualifies by declaring any recommended process and is labelled a full or partial
+  capability match; alternatives substitute for a missing required process. Material, tolerance and
+  envelope suitability are shown as needing confirmation, never asserted from a declared profile.
+
+- The plan also reports the material stated on the drawing. The directory shows the required
+  material, its source (drawing or project setting), and each business's material verdict. Family
+  declarations cover drawing grades in either direction and ask for grade confirmation; unrelated
+  families and empty material lists never read as capability. Ranking is process coverage, then
+  material.
+
+No schema change and no RLS change: the plan travels inside the existing `analyses.data` payload and
+the directory reads the same published profiles as before. Lint, strict typecheck, 51 tests and the
+production build pass; directory matching was exercised against the 16 published local profiles.

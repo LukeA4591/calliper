@@ -6,11 +6,15 @@ import { isConfigured } from "@/lib/config";
 export default function RegisterPage() {
   return (
     <AccountShell
+      eyebrow="ONE ACCOUNT, TWO WAYS TO WORK"
       title="Create your account"
       description="Choose your role, then verify your email to get started."
+      action={{ href: "/login", label: "Sign in" }}
     >
       {isConfigured() ? <AuthForm mode="register" /> : <SetupNotice />}
-      <Link href="/login">Already registered? Sign in</Link>
+      <div className="account-links">
+        <Link href="/login">Already registered? Sign in</Link>
+      </div>
     </AccountShell>
   );
 }

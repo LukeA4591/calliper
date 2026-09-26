@@ -19,8 +19,10 @@ export default async function LoginPage({
   }
   return (
     <AccountShell
+      eyebrow="SIGN IN TO CALLIPER"
       title="Welcome back"
       description="Sign in to your Calliper workspace."
+      action={{ href: "/register", label: "Create an account" }}
     >
       {notice === "password-updated" && (
         <p role="status" className="status-success">Password updated. Sign in with your new password.</p>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowUpRight,
   Factory,
   MapPin,
@@ -21,6 +22,16 @@ import {
   processLabel,
   type DirectoryManufacturer,
 } from "@/lib/manufacturing/directory";
+import {
+  capabilityLabel,
+  compareCapabilityMatches,
+  confirmationNotes,
+  matchCapabilities,
+  matchMaterial,
+  materialLabel,
+  type ProjectContext,
+} from "@/lib/manufacturing/recommendations";
+import { processes as allProcesses } from "@/lib/manufacturing/schemas";
 
 function options(values: string[]) {
   const unique = new Map<string, string>();
@@ -31,10 +42,18 @@ function options(values: string[]) {
 }
 export function ManufacturersDirectory({
   manufacturers,
+  recommended = [],
+  context = null,
 }: {
   manufacturers: DirectoryManufacturer[];
+  recommended?: string[];
+  context?: ProjectContext | null;
 }) {
-  const [filters, setFilters] = useState(emptyDirectoryFilters);
+  const [filters, setFilters] = useState({
+    ...emptyDirectoryFilters,
+    processes: recommended,
+  });
+  const requiredMaterialValue = context?.material ?? null;
   const choices = useMemo(
     () => ({
       process: [...new Set(manufacturers.flatMap(directoryProcesses))].sort(
@@ -52,14 +71,66 @@ export function ManufacturersDirectory({
   );
   const matches = useMemo(
     () =>
-      manufacturers.filter((profile) =>
-        matchesDirectoryFilters(profile, filters),
-      ),
-    [manufacturers, filters],
+      manufacturers
+        .filter((profile) => matchesDirectoryFilters(profile, filters))
+        .map((profile) => ({
+          profile,
+          match: matchCapabilities(profile, filters.processes),
+          material: matchMaterial(profile, requiredMaterialValue),
+        }))
+        .sort(compareCapabilityMatches),
+    [manufacturers, filters, requiredMaterialValue],
   );
-  const active = Object.values(filters).some(Boolean);
+  const active =
+    filters.processes.length > 0 ||
+    [filters.query, filters.material, filters.machinery, filters.location].some(
+      Boolean,
+    );
+  const unselected = allProcesses.filter(
+    (value) => !filters.processes.includes(value),
+  );
+  function removeProcess(value: string) {
+    setFilters({
+      ...filters,
+      processes: filters.processes.filter((item) => item !== value),
+    });
+  }
   return (
     <>
+      {context && (
+        <section className="directory-context" aria-label="Project context">
+          <div>
+            <p className="directory-eyebrow">FINDING MANUFACTURERS FOR</p>
+            <h2>
+              {context.name} <span>Rev {context.revision}</span>
+            </h2>
+            <p className="directory-context-detail">
+              {recommended.length
+                ? `Recommended processes: ${recommended.map(processLabel).join(" · ")}`
+                : "This project has no recommended processes yet. Browse every manufacturer below."}
+            </p>
+            <p className="directory-context-detail">
+              {context.material
+                ? `Material required: ${context.material} (${
+                    context.materialSource === "drawing"
+                      ? "stated on the drawing"
+                      : "from project settings"
+                  }). `
+                : "No material specified on the drawing or in the project. "}
+              {context.toleranceMm !== null
+                ? `Tightest reviewed tolerance: ±${context.toleranceMm} mm. `
+                : ""}
+              Capabilities are declared by each business and need confirmation.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/?project=${encodeURIComponent(context.id)}`}>
+              <ArrowLeft size={15} aria-hidden="true" />
+              Back to project
+            </Link>
+          </Button>
+        </section>
+      )}
       <section className="directory-filters" aria-label="Filter manufacturers">
         <label className="directory-search">
           <Search size={18} aria-hidden="true" />
@@ -73,17 +144,44 @@ export function ManufacturersDirectory({
             }
           />
         </label>
+        {filters.processes.length > 0 && (
+          <div className="directory-process-filters">
+            <span>Manufacturing processes</span>
+            <ul>
+              {filters.processes.map((value) => (
+                <li key={value}>
+                  {processLabel(value)}
+                  <button
+                    onClick={() => removeProcess(value)}
+                    aria-label={`Remove ${processLabel(value)} filter`}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <small>
+              Businesses offering any of these appear, closest match first.
+            </small>
+          </div>
+        )}
         <div className="directory-filter-grid">
           <label>
-            Manufacturing process
+            Add a manufacturing process
             <select
-              value={filters.process}
+              value=""
               onChange={(event) =>
-                setFilters({ ...filters, process: event.target.value })
+                event.target.value &&
+                setFilters({
+                  ...filters,
+                  processes: [...filters.processes, event.target.value],
+                })
               }
             >
-              <option value="">All processes</option>
-              {choices.process.map((value) => (
+              <option value="">
+                {filters.processes.length ? "Add another process" : "Any process"}
+              </option>
+              {unselected.map((value) => (
                 <option key={value} value={value}>
                   {processLabel(value)}
                 </option>
@@ -148,8 +246,25 @@ export function ManufacturersDirectory({
         <span>Published business profiles</span>
       </div>
       <div className="directory-grid" aria-label="Manufacturer results">
-        {matches.map((profile) => (
+        {matches.map(({ profile, match, material }) => (
           <article className="directory-card" key={profile.user_id}>
+            {filters.processes.length > 0 && (
+              <p
+                className={`capability-match capability-${match.status}`}
+                title={
+                  match.missing.length
+                    ? `Not declared: ${match.missing.map(processLabel).join(", ")}`
+                    : undefined
+                }
+              >
+                {capabilityLabel(match)}
+              </p>
+            )}
+            {material.status !== "not_required" && (
+              <p className={`capability-match capability-material-${material.status}`}>
+                {materialLabel(material)}
+              </p>
+            )}
             <div className="directory-company-heading">
               <div className="company-avatar" aria-hidden="true">
                 {companyInitials(profile.business_name)}
@@ -207,6 +322,18 @@ export function ManufacturersDirectory({
                   ` · +${profile.machines.length - 2} more`}
               </p>
             </div>
+            {context && (
+              <div className="directory-card-section">
+                <h3>Needs confirmation</h3>
+                <ul className="capability-confirm">
+                  {confirmationNotes(profile, {
+                    toleranceMm: context.toleranceMm,
+                  }).map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <Button asChild variant="outline" className="directory-view">
               <Link
                 href={`/manufacturers/${profile.user_id}`}
@@ -228,16 +355,18 @@ export function ManufacturersDirectory({
               : "The directory is getting started"}
           </h2>
           <p>
-            {manufacturers.length
-              ? "Try a broader search or clear your filters to see all published profiles."
-              : "Manufacturers will appear here when they publish their business profiles."}
+            {!manufacturers.length
+              ? "Manufacturers will appear here when they publish their business profiles."
+              : filters.processes.length
+                ? "No published business declares these manufacturing processes. Remove a process to broaden the search, or browse every manufacturer."
+                : "Try a broader search or clear your filters to see all published profiles."}
           </p>
           {active && (
             <Button
               variant="outline"
               onClick={() => setFilters(emptyDirectoryFilters)}
             >
-              Reset filters
+              Show all manufacturers
             </Button>
           )}
         </section>

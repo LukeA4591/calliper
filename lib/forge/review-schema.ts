@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { processSchema } from "@/lib/manufacturing/schemas";
 
 export const checkIds = [
   "general_tolerance",
@@ -52,6 +53,27 @@ export const shopCrossReferenceSchema = z.object({
     )
     .max(50),
 });
+// Process identifiers are the database enum, so AI output, storage and the directory
+// filters cannot drift apart. The readable name is derived from processLabels, never
+// taken from model text.
+export const processRecommendationSchema = z.object({
+  process: processSchema,
+  role: z.enum(["primary", "secondary", "alternative"]),
+  reason: z.string().min(1).max(600),
+  limitations: z.array(z.string().min(1).max(300)).max(4),
+});
+export const planMaterialSchema = z.object({
+  stated: z.string().max(120).nullable(),
+  quote: z.string().max(300),
+});
+export const manufacturingPlanSchema = z.object({
+  summary: z.string().max(1000),
+  processes: z.array(processRecommendationSchema).max(8),
+  // Optional: reviews saved before material was recommended have no entry.
+  material: planMaterialSchema.optional(),
+});
+export type ProcessRecommendation = z.infer<typeof processRecommendationSchema>;
+export type ManufacturingPlan = z.infer<typeof manufacturingPlanSchema>;
 export const pageAuditSchema = z.object({
   page: z.number().int().min(1).max(100),
   holeCalloutCount: z.number().int().min(0).max(24),
@@ -71,6 +93,7 @@ export const drawingReviewSchema = z.object({
   totalPages: z.number().int().positive(),
   assumedGeneralTolerance: z.literal("ISO 2768-m").nullable(),
   tolerances: z.array(toleranceAssessmentSchema).max(24),
+  manufacturing: manufacturingPlanSchema.optional(),
   // Read previous saved snapshots without running or displaying shop screening.
   shopChecks: z.array(shopCrossReferenceSchema).max(24).optional(),
   checks: z.array(reviewCheckSchema).length(6),

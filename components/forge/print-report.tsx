@@ -109,6 +109,7 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
           {finding.ai?.priorityReason && (
             <p>Priority: {finding.ai.priorityReason}</p>
           )}
+          {/* Only reachable for analyses saved while passing tolerances raised an issue. */}
           {finding.ai?.result === "pass" && (
             <p>
               Tolerance screen passed for the listed callouts; AI readings

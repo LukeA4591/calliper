@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { LandingPage } from "@/components/landing/landing-page";
 import "./designer.css";
 export const dynamic = "force-dynamic";
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
   const account = await getCurrentUser();
   if (!account) return <LandingPage />;
   const { supabase, userId, email, role } = account;
@@ -25,11 +29,13 @@ export default async function Home() {
       ? [{ analysis: parsed.data, updatedAt: row.updated_at }]
       : [];
   });
+  const { project } = await searchParams;
   return (
     <ForgeWorkspace
       userId={userId}
       email={email}
       savedAnalyses={projects}
+      initialProjectId={project}
       aiConfigured={!!process.env.AI_API_KEY?.trim()}
     />
   );

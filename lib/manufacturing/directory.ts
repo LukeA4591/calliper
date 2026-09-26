@@ -20,14 +20,16 @@ export type DirectoryManufacturer = {
 };
 export type DirectoryFilters = {
   query: string;
-  process: string;
+  // A project recommends several processes, so this filter keeps a list and
+  // matches any of them. Ranking, not exclusion, distinguishes the best fits.
+  processes: string[];
   material: string;
   machinery: string;
   location: string;
 };
 export const emptyDirectoryFilters: DirectoryFilters = {
   query: "",
-  process: "",
+  processes: [],
   material: "",
   machinery: "",
   location: "",
@@ -92,7 +94,8 @@ export function matchesDirectoryFilters(
       .trim()
       .split(/\s+/)
       .every((term) => text.includes(normalizeDirectoryText(term))) &&
-    (!filters.process || processList.includes(filters.process)) &&
+    (!filters.processes.length ||
+      filters.processes.some((value) => processList.includes(value))) &&
     (!filters.material ||
       materialList.some(
         (value) => normalizeDirectoryText(value) === filters.material,

@@ -247,6 +247,11 @@ export async function testManufacturingDatabase(local: Record<string, string>) {
     const fixture = createFixture();
     const review = groundDrawingReview(
       {
+        manufacturing: {
+          summary: "No route recommended.",
+          processes: [],
+          material: { stated: null, quote: "" },
+        },
         pageAudits: [
           {
             page: 1,

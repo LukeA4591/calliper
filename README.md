@@ -248,10 +248,12 @@ screens, the issue selector and details sit below the drawing, which remains vis
   saved analyses for compatibility, but does not control which issues appear in the viewer.
 - Projects with search, sorting and revisions. New accounts start empty; demo entries are excluded.
 - Six-check AI drawing analysis remains unchanged: missing general tolerances use a flagged
-  provisional ISO 2768-m default; passing tolerances form one low-priority check. Each issue keeps
-  its evidence and priority explanation.
-- Manufacturer matching services and profiles remain in the application, with no integration on
-  the drawing analysis page.
+  provisional ISO 2768-m default; a stated tolerance raises an issue only when it is tighter than
+  ISO 2768-f, and is otherwise recorded as coverage. Each issue keeps its evidence and priority
+  explanation.
+- AI review also recommends the manufacturing processes suited to the drawing and reports the
+  material it states. The project shows both above the viewer with a **Find manufacturers** link
+  into the directory. Capability screening stays in the directory, not the drawing viewer.
 
 ## Real versus fixture-backed analysis
 
@@ -309,7 +311,7 @@ Server Component loads account-owned uploaded analyses
 Authored sample measurements → deterministic configurable rules → validated findings
 Uploaded PDF → selected page images + positioned text → validated Server Action
   → OpenAI six-check review → deterministic L/D and ISO tolerance calculations
-  → passing tolerances → one low-priority check; concerns → explained priorities
+  → passing tolerances → coverage record only; concerns → explained priorities
   → unverified flags / suggested markers → engineer decisions / notes / reports
 ```
 
@@ -386,7 +388,9 @@ See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and [docs/handoff.md](docs/
    a flag, inspect the callout and calculation, add an engineer note, then **Confirm issue** or
    **Dismiss flag**. Confirmation accepts the issue; **Mark addressed** records its resolution.
 5. Expand **Six-check results & analysis notes** to see coverage, tolerance calculations and unknowns.
-   Passing tolerances are grouped into one **low-priority** check. Each concern explains its priority.
+   A stated tolerance raises **no issue** unless it is tighter than ISO 2768-f; passing and
+   unevaluated callouts are listed there instead. When nothing is flagged, the issue queue says so.
+   Each concern explains its priority.
 6. Export the report. Re-running review explicitly replaces the previous AI results and decisions.
    Previous measurement extractions remain readable until replaced; sample tooling settings do not
    rerun the new AI review.
@@ -439,5 +443,33 @@ initials; the current registration schema does not collect logos or websites.
 
 Private drafts are excluded from discovery. Owners can preview their own unpublished profile;
 other users cannot read it. Login emails and authentication metadata are never used as business
-contact information. Discovery stays separate from drawing analysis and does not run matching.
+contact information.
 No additional database migration is required for the directory beyond the existing manufacturer migrations.
+
+#### Arriving from a project
+
+**Find manufacturers** on a reviewed project opens
+`/manufacturers?processes=<ids>&project=<analysis id>`. Unsupported process identifiers in the
+query are discarded. The project name, revision, material and tightest reviewed tolerance are read
+from the signed-in owner's saved analysis, never from the query string, so a link cannot place
+arbitrary text in the banner; a viewer who does not own that analysis simply sees the plain
+directory.
+
+A business appears when it declares **any** recommended process, and each card states whether it
+offers every recommended process or only some of them. Alternatives satisfy a required process
+without a manufacturer having to offer every alternative. Process filters are individually
+removable, more can be added, and the search, material, machinery and location filters are
+unchanged.
+
+Each card also reports the material. The required material is the grade stated on the drawing, or
+the project's own material setting when the drawing states none, and the banner says which. Because
+businesses commonly declare a family such as `Aluminium` while a drawing states `Aluminium 6061-T6`,
+a declared value matches when it leads the required one in either direction: `Aluminium` covers
+`Aluminium 6061-T6` as a **family** match asking for grade confirmation, while `Steel` never covers
+`Stainless steel 304`. An exact grade reads as declared, an empty material list reads as
+undeclared, and neither is treated as capability. Results rank by process coverage first, then
+material.
+
+Tolerance and working-envelope suitability remain listed as **needs confirmation**: declared
+capability is not a quote or a commitment. Opening `/manufacturers` directly still lists every
+published profile with no project filters.
