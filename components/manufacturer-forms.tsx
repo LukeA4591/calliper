@@ -199,7 +199,10 @@ export function BusinessForm({
       <Button disabled={pending}>
         {pending ? "Saving…" : "Save business profile"}
       </Button>
-      <p role={state.error ? "alert" : "status"}>
+      <p
+        className={state.error ? "text-danger" : "text-success"}
+        role={state.error ? "alert" : "status"}
+      >
         {state.error || state.success}
       </p>
     </form>
@@ -277,7 +280,10 @@ export function MachineForm({
       <Button disabled={pending}>
         {pending ? "Saving…" : machine ? "Save machine" : "Add machine"}
       </Button>
-      <p role={state.error ? "alert" : "status"}>
+      <p
+        className={state.error ? "text-danger" : "text-success"}
+        role={state.error ? "alert" : "status"}
+      >
         {state.error || state.success}
       </p>
     </form>
@@ -292,10 +298,15 @@ export function RemoveMachine({ id, userId }: { id: string; userId: string }) {
       <form action={action}>
         <input name="account_context" type="hidden" value={userId} />
         <input type="hidden" name="id" value={id} />
-        <Button variant="outline" disabled={pending}>
+        <Button variant="destructive" disabled={pending}>
           {pending ? "Removing…" : "Confirm removal"}
         </Button>
-        <p role="status">{state.error || state.success}</p>
+        <p
+          className={state.error ? "text-danger" : "text-success"}
+          role={state.error ? "alert" : "status"}
+        >
+          {state.error || state.success}
+        </p>
       </form>
     </details>
   );

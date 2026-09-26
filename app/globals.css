@@ -1,21 +1,55 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 
-@theme {
-  --color-black: #000000;
-  --color-charcoal: #242424;
-  --color-blue: #2395ff;
-  --color-off-white: #f0f0f0;
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-}
+/* Calliper: interaction is blue; status colors have fixed meanings. */
 :root {
-  --grid-margin: 20px;
-  --grid-gutter: 20px;
+  --ink: #1A1D21;
+  --paper: #F6F4EF;
+  --surface: #FFFFFF;
+  --accent: #2B5C8A;
+  --accent-fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  --success: #15803D;
+  --success-fill: rgba(21,128,61,0.12);
+  --warning: #92400E;
+  --warning-fill: rgba(180,83,9,0.14);
+  --danger: #B91C1C;
+  --danger-fill: rgba(185,28,28,0.10);
+  --text-secondary: rgba(26,29,33,0.6);
+  --border: rgba(26,29,33,0.12);
+  --disabled: rgba(26,29,33,0.35);
+  --muted: var(--text-secondary);
+  --line: var(--border);
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --space-6: 64px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 20px;
+  --grid-margin: var(--space-3);
+  --grid-gutter: var(--space-3);
 }
-@media (min-width: 1024px) {
-  :root {
-    --grid-margin: 30px;
-  }
+@theme inline {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-success: var(--success);
+  --color-success-fill: var(--success-fill);
+  --color-warning: var(--warning);
+  --color-warning-fill: var(--warning-fill);
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-disabled: var(--disabled);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 20px;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 @utility grid-container {
   width: 100%;
@@ -69,13 +103,13 @@
 }
 @layer base {
   body {
-    background: white;
-    color: var(--color-black);
+    background: var(--paper);
+    color: var(--ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
   :focus-visible {
-    outline: 2px solid var(--color-black);
+    outline: 2px solid var(--accent);
     outline-offset: 4px;
   }
   button,
@@ -85,7 +119,27 @@
     -webkit-tap-highlight-color: transparent;
   }
   ::selection {
-    background: var(--color-blue);
-    color: black;
+    background: var(--accent);
+    color: var(--surface);
   }
 }
+
+@layer base {
+  a, summary { color: var(--accent); }
+  input, select, textarea { accent-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: var(--text-secondary); }
+  button:disabled, input:disabled, select:disabled, textarea:disabled {
+    color: var(--disabled);
+    cursor: not-allowed;
+  }
+}
+/* Labels always accompany these treatments; aria-live alone is not a status. */
+.status-success { color: var(--success); background: var(--success-fill); }
+.status-warning { color: var(--warning); background: var(--warning-fill); }
+.status-danger { color: var(--danger); background: var(--danger-fill); }
+.status-info { color: var(--accent); background: var(--accent-fill); }
+.status-success, .status-warning, .status-danger, .status-info {
+  border-radius: var(--radius-md);
+  padding: 4px var(--space-1);
+}
+[role="alert"]:not(:empty) { color: var(--danger); }

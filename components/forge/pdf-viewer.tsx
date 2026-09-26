@@ -13,6 +13,7 @@ import {
   Scan,
   Eye,
   EyeOff,
+  TriangleAlert,
 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { getPdfEngine } from "@/lib/forge/pdf";
@@ -452,10 +453,12 @@ export function PdfViewer({
                       height: `${region.height * 100}%`,
                     }}
                     onClick={() => onSelect(finding.id)}
-                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}`}
+                    title={`${finding.severity} priority · ${finding.status}: ${finding.title}`}
+                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}, ${finding.severity} priority, ${finding.status}`}
                     aria-pressed={selectedId === finding.id}
                   >
                     <span>
+                      <TriangleAlert size={12} aria-hidden="true" />
                       {allFindings.findIndex((f) => f.id === finding.id) + 1}
                     </span>
                   </button>

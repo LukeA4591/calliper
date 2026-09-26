@@ -32,7 +32,7 @@ export function IdeaForm({ idea }: { idea?: Idea }) {
       <div>
         <label htmlFor={`${key}-description`} className="text-sm font-medium">
           Description{" "}
-          <span className="font-normal text-charcoal">(optional)</span>
+          <span className="font-normal text-secondary">(optional)</span>
         </label>
         <textarea
           id={`${key}-description`}
@@ -51,7 +51,7 @@ export function IdeaForm({ idea }: { idea?: Idea }) {
       <p
         aria-live="polite"
         role={state.error ? "alert" : "status"}
-        className="text-sm leading-6"
+        className={`text-sm leading-6 ${state.error ? "text-danger" : "text-success"}`}
       >
         {state.error || state.success}
       </p>
@@ -63,14 +63,14 @@ export function DeleteIdea({ idea }: { idea: Idea }) {
   return (
     <form
       action={action}
-      className="mt-4 border-t border-black/10 pt-4"
+      className="mt-4 border-t border-border pt-4"
       onSubmit={(event) => {
         if (!window.confirm(`Delete “${idea.title}”? This cannot be undone.`))
           event.preventDefault();
       }}
     >
       <input type="hidden" name="id" value={idea.id} />
-      <Button type="submit" variant="outline" disabled={pending}>
+      <Button type="submit" variant="destructive" disabled={pending}>
         {pending ? "Deleting…" : "Delete idea"}
       </Button>
       <p role="alert" className="mt-2 text-sm">

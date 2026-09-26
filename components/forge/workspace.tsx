@@ -420,7 +420,16 @@ export function ForgeWorkspace({
                     <ArrowDownToLine size={15} />
                     Export report
                   </Button>
-                  <span className="local-save" role="status">
+                  <span
+                    className={`local-save ${
+                      storageError || storage === "Not saved"
+                        ? "save-error"
+                        : storage.startsWith("Analysis saved")
+                          ? "save-complete"
+                          : "save-pending"
+                    }`}
+                    role="status"
+                  >
                     <span />
                     {storage}
                   </span>

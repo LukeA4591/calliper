@@ -4,7 +4,7 @@ export default function Loading() {
       <p role="status" className="text-lg">
         Loading your ideas…
       </p>
-      <div className="mt-8 h-64 rounded-[20px] bg-off-white motion-safe:animate-pulse" />
+      <div className="mt-8 h-64 rounded-lg bg-paper motion-safe:animate-pulse" />
     </main>
   );
 }

@@ -10,7 +10,7 @@ export default function ErrorPage({
   return (
     <main id="main" className="mx-auto max-w-xl px-5 py-24">
       <h1 className="text-h2">Something didn’t load.</h1>
-      <p className="my-6 text-sm leading-6 text-charcoal">
+      <p className="my-6 text-sm leading-6 text-secondary">
         Your request couldn’t be completed. Please try again. If you’re setting
         up the starter, check your Supabase connection and apply the database
         migration.

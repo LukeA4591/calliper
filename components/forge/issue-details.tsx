@@ -100,7 +100,9 @@ export function IssueDetails({
                   ),
                 )}
               </div>
-              <span className="evidence-status">
+              <span
+                className={`evidence-status ${evidence.status === "verified" ? "status-success" : "status-warning"}`}
+              >
                 {evidence.status === "verified"
                   ? evidence.provenance === "engineer_confirmed"
                     ? "Measurements confirmed by reviewer"

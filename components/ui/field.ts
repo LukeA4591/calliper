@@ -1,2 +1,2 @@
 export const fieldClass =
-  "w-full rounded-[20px] border border-black/15 bg-white px-4 py-3 text-base text-black placeholder:text-charcoal/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-50";
+  "w-full rounded-sm border border-border bg-surface px-4 py-3 text-base text-ink placeholder:text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:text-disabled";

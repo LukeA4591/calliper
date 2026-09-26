@@ -428,7 +428,10 @@ export function CandidateDetails({
         </div>
         <h2>{candidate.label}</h2>
         {candidate.decision === "confirmed" && (
-          <p className="confirmation-result" role="status">
+          <p
+            className={`confirmation-result ${findingTitle ? "status-warning" : "status-success"}`}
+            role="status"
+          >
             {findingTitle
               ? `Finding raised: ${findingTitle}. Open Review findings for its details.`
               : "Confirmed. No concern crosses the current thresholds for this feature. The drawing still needs engineering review."}
@@ -554,7 +557,7 @@ export function CandidateDetails({
         <div className="candidate-actions">
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             onClick={() =>
               onUpdate({
                 ...candidate,

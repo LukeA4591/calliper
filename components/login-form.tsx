@@ -42,14 +42,14 @@ export function LoginForm() {
               ? "Send a new code"
               : "Email me a code"}
         </Button>
-        <p aria-live="polite" className="text-sm leading-6">
+        <p aria-live="polite" className={`text-sm leading-6 ${sent.error ? "text-danger" : "text-success"}`}>
           {sent.error || sent.success}
         </p>
       </form>
       {sent.success && (
         <form
           action={verify}
-          className="space-y-4 border-t border-black/15 pt-6"
+          className="space-y-4 border-t border-border pt-6"
         >
           <input type="hidden" name="email" value={sent.email} />
           <div>
@@ -71,7 +71,7 @@ export function LoginForm() {
                 aria-describedby="code-help"
               />
             </div>
-            <p id="code-help" className="mt-2 text-sm text-charcoal">
+            <p id="code-help" className="mt-2 text-sm text-secondary">
               Use the code sent to {sent.email}.
             </p>
           </div>

@@ -162,7 +162,7 @@ export function ProjectLibrary({
             </tr>
           </thead>
           <tbody>
-            {filtered.map(({ project, label, high, open }) => {
+            {filtered.map(({ project, label, high, open, status }) => {
               const a = project.analysis;
               return (
                 <tr key={a.id}>
@@ -182,7 +182,17 @@ export function ProjectLibrary({
                     </span>
                   </td>
                   <td>
-                    {label}
+                    <span
+                      className={`status-badge ${
+                        status === "reviewed"
+                          ? "status-success"
+                          : status === "not-started"
+                            ? "status-info"
+                            : "status-warning"
+                      }`}
+                    >
+                      {label}
+                    </span>
                     {high > 0 && (
                       <span className="library-priority">
                         {high} high priority

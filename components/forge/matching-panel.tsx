@@ -18,6 +18,11 @@ const labels = {
   potential: "Potential match",
   incompatible: "Not compatible",
 };
+const statusClasses = {
+  compatible: "status-success",
+  potential: "status-warning",
+  incompatible: "status-danger",
+};
 const keys = [
   "processes",
   "material",
@@ -358,7 +363,9 @@ export function MatchingPanel({
                 </h3>
                 <p>{match.profile.location}</p>
               </div>
-              <strong className="match-status">{labels[match.status]}</strong>
+              <strong className={`match-status ${statusClasses[match.status]}`}>
+                {labels[match.status]}
+              </strong>
               <p>
                 Materials: {match.profile.materials.join(", ") || "Unspecified"}
               </p>
@@ -373,7 +380,10 @@ export function MatchingPanel({
                 .map((machine) => (
                   <details key={machine.machineId}>
                     <summary>
-                      {machine.machineName} · {labels[machine.status]}
+                      {machine.machineName} ·{" "}
+                      <span className={statusClasses[machine.status]}>
+                        {labels[machine.status]}
+                      </span>
                     </summary>
                     <ul>
                       {machine.reasons.map((s, i) => (
@@ -401,7 +411,10 @@ export function MatchingPanel({
               </summary>
               {excluded.map((m) => (
                 <div className="machine-record" key={m.profile.user_id}>
-                  <h3>{m.profile.business_name} · Not compatible</h3>
+                  <h3>
+                    {m.profile.business_name} ·{" "}
+                    <span className="status-danger">Not compatible</span>
+                  </h3>
                   {m.machines.map((machine) => (
                     <div key={machine.machineId}>
                       <strong>{machine.machineName}</strong>

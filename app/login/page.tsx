@@ -23,10 +23,10 @@ export default async function LoginPage({
       description="Sign in to your Calliper workspace."
     >
       {notice === "password-updated" && (
-        <p role="status">Password updated. Sign in with your new password.</p>
+        <p role="status" className="status-success">Password updated. Sign in with your new password.</p>
       )}
       {notice === "verify" && (
-        <p role="alert">Verify your email before continuing.</p>
+        <p role="status" className="status-warning">Verify your email before continuing.</p>
       )}
       {isConfigured() ? (
         <>

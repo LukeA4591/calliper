@@ -28,7 +28,7 @@ export function AccountShell({
           </>
         )}
       </header>
-      <main id="main" className="account-page">
+      <main id="main" className={`account-page ${signedIn ? "" : "auth-page"}`}>
         <h1>{title}</h1>
         {description && <p className="account-intro">{description}</p>}
         {children}

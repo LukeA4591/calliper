@@ -106,7 +106,7 @@ export function AuthForm({
         <p
           role={state.error ? "alert" : "status"}
           className={
-            state.error ? "auth-feedback auth-feedback-error" : "auth-feedback"
+            state.error ? "auth-feedback auth-feedback-error" : "auth-feedback auth-feedback-success"
           }
         >
           {state.error || state.success}

@@ -41,16 +41,24 @@ export default async function ManufacturerDashboard() {
       description="Describe your real equipment and capabilities. Leave unknown specifications blank."
     >
       <ol className="onboarding-progress">
-        <li>{profile ? "✓" : "1."} Business profile</li>
-        <li>{machines?.length ? "✓" : "2."} Equipment</li>
-        <li>
+        <li className={profile ? "status-success" : "status-warning"}>
+          {profile ? "✓" : "1."} Business profile
+        </li>
+        <li className={machines?.length ? "status-success" : "status-warning"}>
+          {machines?.length ? "✓" : "2."} Equipment
+        </li>
+        <li className={profile?.published ? "status-success" : "status-warning"}>
           {profile?.published ? "✓ Published" : "3. Publish for matching"}
         </li>
       </ol>
       <section className="account-section">
         <h2>
           Business profile{" "}
-          <span>{profile?.published ? "Published" : "Private draft"}</span>
+          <span
+            className={`status-badge ${profile?.published ? "status-success" : "status-warning"}`}
+          >
+            {profile?.published ? "Published" : "Private draft"}
+          </span>
         </h2>
         {profile?.published && (
           <Link href={`/manufacturers/${userId}`}>
