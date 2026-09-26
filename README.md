@@ -129,7 +129,7 @@ Restart the app after editing `.env.local`.
    GET requests do not consume them, to avoid email scanner/prefetch problems.
 3. You are signed in and directed to Projects. Choose **New analysis** and upload a PDF.
 4. Sign out, register another email with **Manufacturer**, and verify it.
-5. Save a business profile as a draft, add at least one machine, then check **Publish** and save.
+5. Fill in your business details, add named machines with their type and individual x/y/z part-size limits, then **Save business profile** and **Publish profile**. Materials, tolerance and lead times are entered once for the business. Machine changes are saved together with the profile. Saving business details never changes publication status.
 6. Sign in as the designer, upload a drawing and open the drawing viewer. Manufacturer matching is separate from this page; its underlying services and manufacturer profiles remain available.
 
 Unverified users cannot access protected routes, actions, or records. Roles cannot be changed
@@ -166,7 +166,7 @@ pnpm db:start
 pnpm dev
 ```
 
-Apply all committed migrations, including `20260926000000_accounts_manufacturers.sql`
+Apply all committed migrations, including `20260927000000_manufacturer_machine_profiles.sql`
 and `20260926010000_analysis_payload_guard.sql`, to add account tables, policies and validation.
 Do **not** use `db:reset` to upgrade existing data. Existing ideas and users remain intact.
 Legacy browser projects are not silently assigned to whichever account signs in first.
@@ -332,9 +332,11 @@ Analysis metadata and requirements are stored in Supabase under the verified des
 Files stay on the device; selected page images/text are sent to OpenAI only after review
 consent. The full PDF and STEP file are not uploaded. Browser storage is not a file backup.
 
-Manufacturer business contact information and equipment are visible to verified users only
+Manufacturer business contact information and capabilities are visible to verified users only
 when the owner publishes the profile. Login emails and private draft profiles are not listed.
-Matching reads current profiles and evaluates each machine independently using deterministic
+Named machines and their individual part-size limits are shown on profiles. Existing machine-specific
+materials, tolerances and additional capabilities remain stored for legacy records. The underlying
+matching service still evaluates existing machine records independently using deterministic
 rules. Missing values, inferred/unconfirmed requirements, incomplete page coverage, and unresolved
 limitations produce **Potential match**, never a definitive compatibility claim.
 
@@ -426,3 +428,16 @@ continues to use independently reviewed requirements. AI drawing review does not
 Validate on engineering-team CNC drawings and tune extraction based on measured accuracy. Add
 private cloud drawing-file storage, then durable analysis jobs and shared rate limits. Add STEP geometry only after the drawing workflow and
 rules have engineering validation.
+
+### Manufacturer discovery
+
+Signed-in users can browse **Manufacturers** at `/manufacturers`, next to Projects.
+The directory reads published business profiles and their machines from Supabase, with combined
+search, process, material, machinery and location filters. Profiles show business contact details,
+capabilities, capacity notes and each machine's stored specifications. Logo placeholders use company
+initials; the current registration schema does not collect logos or websites.
+
+Private drafts are excluded from discovery. Owners can preview their own unpublished profile;
+other users cannot read it. Login emails and authentication metadata are never used as business
+contact information. Discovery stays separate from drawing analysis and does not run matching.
+No additional database migration is required for the directory beyond the existing manufacturer migrations.

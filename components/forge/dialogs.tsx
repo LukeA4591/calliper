@@ -36,7 +36,12 @@ export function Modal({
       }}
     >
       <div className="dialog-heading">
-        <h2>{title}</h2>
+        <div>
+          <p className="designer-dialog-eyebrow">
+            CALLIPER · DRAWING WORKSPACE
+          </p>
+          <h2>{title}</h2>
+        </div>
         <button onClick={onClose} aria-label="Close dialog">
           <X size={20} />
         </button>

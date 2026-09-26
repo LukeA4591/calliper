@@ -3,7 +3,7 @@
 ## Journeys
 
 - **Designer:** register → verify email → Projects → upload PDF → extract/confirm callouts → review manufacturing requirements → inspect manufacturer matches.
-- **Manufacturer:** register → verify email → save business draft → add equipment → publish → maintain business/equipment from the dashboard.
+- **Manufacturer:** register → verify email → save business details and capabilities → publish → maintain one business profile. The profile includes named machines, a type and individual x/y/z limits. Materials and tolerance are collected once for the business. Saving uses an atomic, invoker-security RPC; RLS continues to enforce ownership.
 
 The app uses Supabase Auth with password signup/login, expiring one-use verification/recovery
 links, SSR session cookies, logout and password reset. Every protected server entry checks the
@@ -127,5 +127,5 @@ coverage, inferred requirements and refusal to pool machine capabilities.
 all new tables with two accounts, anonymous access denial, role immutability even after metadata
 changes, manufacturer draft/publication isolation, machine CRUD, analysis ownership, password
 registration, verification/replay rejection, role routing, persistent cookies, actual onboarding
-forms, machine edits, published profile viewing and email recovery through real Server Actions.
+forms, machine create/edit/removal with atomic profile saving, published profile viewing and email recovery through real Server Actions.
 Temporary users and data are removed. No external emails or AI requests are sent by this suite.

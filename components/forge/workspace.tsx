@@ -162,12 +162,13 @@ export function ForgeWorkspace({
   return (
     <>
       <div
-        className={`forge-app no-print ${view === "analysis" ? "drawing-app" : ""}`}
+        className={`forge-app designer-app no-print ${view === "analysis" ? "drawing-app" : ""}`}
       >
         <header className="app-navigation">
           <Link className="forge-brand" href="/" aria-label="Calliper home">
             <Brand />
           </Link>
+          <span className="designer-nav-label">DESIGNER WORKSPACE</span>
           <nav aria-label="Main navigation">
             <button
               aria-current={view === "projects" ? "page" : undefined}
@@ -176,6 +177,9 @@ export function ForgeWorkspace({
             >
               Projects
             </button>
+            <Link className="nav-item" href="/manufacturers">
+              Manufacturers
+            </Link>
           </nav>
           <span className="workspace-label">{email}</span>
           <form action={signOut}>

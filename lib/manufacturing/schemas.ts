@@ -1,16 +1,34 @@
 import { z } from "zod";
 export const processes = [
   "cnc_milling_3_axis",
+  "cnc_milling_4_axis",
   "cnc_milling_5_axis",
   "cnc_turning",
+  "cnc_turn_mill",
+  "cnc_routing",
+  "manual_milling",
+  "manual_turning",
   "laser_cutting",
   "waterjet_cutting",
+  "plasma_cutting",
+  "wire_edm",
+  "surface_grinding",
+  "press_brake",
   "additive_manufacturing",
 ] as const;
 export const processLabels: Record<(typeof processes)[number], string> = {
   cnc_milling_3_axis: "3-axis CNC milling",
   cnc_milling_5_axis: "5-axis CNC milling",
   cnc_turning: "CNC turning",
+  cnc_milling_4_axis: "4-axis CNC milling",
+  cnc_turn_mill: "CNC turn-mill",
+  cnc_routing: "CNC routing",
+  manual_milling: "Manual milling",
+  manual_turning: "Manual turning",
+  plasma_cutting: "Plasma cutting",
+  wire_edm: "Wire EDM",
+  surface_grinding: "Surface grinding",
+  press_brake: "Press brake",
   laser_cutting: "Laser cutting",
   waterjet_cutting: "Waterjet cutting",
   additive_manufacturing: "3D printing",
@@ -55,7 +73,7 @@ export const profileSchema = z.object({
   contact_phone: z.string().trim().max(60),
   location: z.string().trim().min(1, "Location is required.").max(240),
   description: z.string().trim().max(2000),
-  processes: z.array(processSchema).max(6),
+  processes: z.array(processSchema).max(processes.length),
   materials: materialList,
   max_x_mm: dimension,
   max_y_mm: dimension,
@@ -73,7 +91,7 @@ export const machineSchema = z.object({
   processes: z
     .array(processSchema)
     .min(1, "Select at least one process.")
-    .max(6),
+    .max(processes.length),
   materials: materialList,
   max_x_mm: dimension,
   max_y_mm: dimension,
@@ -97,7 +115,10 @@ const evidence = {
   confirmed: z.boolean(),
 };
 export const requirementsSchema = z.object({
-  processes: z.object({ ...evidence, value: z.array(processSchema).max(6) }),
+  processes: z.object({
+    ...evidence,
+    value: z.array(processSchema).max(processes.length),
+  }),
   material: z.object({ ...evidence, value: z.string().max(100).nullable() }),
   dimensions: z.object({
     ...evidence,
@@ -146,3 +167,22 @@ export function canonicalMaterial(value: string) {
     .replace(/aluminum/g, "aluminium")
     .replace(/\s+/g, " ");
 }
+
+// Only the fields collected for a named machine on the business profile.
+export const profileMachineSchema = machineSchema
+  .pick({
+    name: true,
+    category: true,
+    max_x_mm: true,
+    max_y_mm: true,
+    max_z_mm: true,
+  })
+  .extend({ id: z.uuid() });
+export const profileMachinesSchema = z
+  .array(profileMachineSchema)
+  .max(50, "You can list up to 50 machines.")
+  .refine(
+    (rows) => new Set(rows.map((row) => row.id)).size === rows.length,
+    "Each machine must have a unique ID.",
+  );
+export type ProfileMachine = z.infer<typeof profileMachineSchema>;

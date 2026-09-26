@@ -258,6 +258,10 @@ async function main() {
       assert.equal($('[aria-label="Project library"]').length, 0);
     }
     await assertPublicLanding();
+    assert.equal(
+      (await request("/manufacturers")).headers.get("location"),
+      "/login",
+    );
     let response = await request("/ideas");
     assert.equal(response.status, 307);
     assert.equal(response.headers.get("location"), "/login");
@@ -454,8 +458,25 @@ async function main() {
     const manufacturer = await signup("manufacturer");
     assert.equal((await request("/")).headers.get("location"), "/manufacturer");
     let dashboard = await (await request("/manufacturer")).text();
-    assert.ok(dashboard.includes("Set up your manufacturing business"));
+    assert.ok(dashboard.includes("Set up your business profile"));
+    const machineOne = {
+      id: crypto.randomUUID(),
+      name: "kirax PC - 30w3",
+      category: "cnc_milling_4_axis",
+      max_x_mm: 500,
+      max_y_mm: 300,
+      max_z_mm: 200,
+    };
+    const machineTwo = {
+      id: crypto.randomUUID(),
+      name: "Workshop wire EDM",
+      category: "wire_edm",
+      max_x_mm: 250,
+      max_y_mm: 150,
+      max_z_mm: null,
+    };
     const businessFields = {
+      machines: JSON.stringify([machineOne, machineTwo]),
       business_name: "HTTP test workshop",
       contact_email: "business@example.test",
       contact_phone: "",
@@ -470,64 +491,152 @@ async function main() {
       "/manufacturer",
       dashboard,
       'form:has(input[name="business_name"])',
-      businessFields,
+      { ...businessFields, published: "on" },
     );
-    assert.ok((await draft.text()).includes("Draft saved"));
-    dashboard = await (await request("/manufacturer")).text();
-    const equipment = await submit(
-      "/manufacturer",
-      dashboard,
-      'form:has(input[name="name"])',
-      {
-        name: "HTTP mill",
-        brand: "Test brand",
-        model: "Mill",
-        category: "cnc_milling_3_axis",
-        processes: "cnc_milling_3_axis",
-        materials: "Aluminium 6061-T6",
-        max_x_mm: "500",
-        max_y_mm: "300",
-        max_z_mm: "200",
-        tolerance_mm: "0.01",
-        notes: "",
-      },
+    assert.ok(
+      (await draft.text()).includes(
+        "Business profile saved as a private draft",
+      ),
     );
-    assert.ok((await equipment.text()).includes("Machine saved"));
+    const savedBusiness = await admin
+      .from("manufacturer_profiles")
+      .select("business_name,published")
+      .eq("user_id", manufacturer.id)
+      .single();
+    assert.equal(
+      savedBusiness.data?.business_name,
+      businessFields.business_name,
+    );
+    assert.equal(
+      savedBusiness.data?.published,
+      false,
+      "Saving details must not publish, including stale forms with a publish checkbox",
+    );
     dashboard = await (await request("/manufacturer")).text();
-    const published = await submit(
+    assert.equal(load(dashboard)('input[name="published"]').length, 0);
+    assert.equal(
+      load(dashboard)('form:has(input[name="intent"]) button').is(":disabled"),
+      false,
+    );
+    assert.equal(
+      load(dashboard)('input[name="name"]').length,
+      0,
+      "Machine data is submitted as one validated list",
+    );
+    const savedMachines = await admin
+      .from("machines")
+      .select("*")
+      .eq("manufacturer_id", manufacturer.id);
+    assert.equal(savedMachines.data?.length, 2);
+    assert.equal(
+      savedMachines.data?.find((row) => row.id === machineOne.id)?.max_x_mm,
+      500,
+    );
+    assert.equal(
+      savedMachines.data?.find((row) => row.id === machineTwo.id)?.category,
+      "wire_edm",
+    );
+    const invalidMachines = await submit(
       "/manufacturer",
       dashboard,
       'form:has(input[name="business_name"])',
-      { ...businessFields, published: "on" },
-    );
-    assert.ok((await published.text()).includes("Profile published"));
-    const { data: equipmentRows } = await admin
-      .from("machines")
-      .select("id")
-      .eq("manufacturer_id", manufacturer.id);
-    assert.equal(equipmentRows?.length, 1);
-    const machineId = equipmentRows![0].id;
-    dashboard = await (await request("/manufacturer")).text();
-    const editedMachine = await submit(
-      "/manufacturer",
-      dashboard,
-      `form:has(input[name="id"][value="${machineId}"]):has(input[name="name"])`,
       {
-        id: machineId,
-        name: "Edited HTTP mill",
-        brand: "Test brand",
-        model: "Mill",
-        category: "cnc_milling_3_axis",
-        processes: "cnc_milling_3_axis",
-        materials: "Aluminium 6061-T6",
-        max_x_mm: "500",
-        max_y_mm: "300",
-        max_z_mm: "200",
-        tolerance_mm: "0.01",
-        notes: "",
+        ...businessFields,
+        machines: JSON.stringify([{ ...machineOne, max_x_mm: -1 }]),
       },
     );
-    assert.ok((await editedMachine.text()).includes("Machine saved"));
+    assert.ok((await invalidMachines.text()).includes("error"));
+    assert.equal(
+      (
+        await admin
+          .from("machines")
+          .select("id")
+          .eq("manufacturer_id", manufacturer.id)
+      ).data?.length,
+      2,
+    );
+    const published = await submit(
+      "/manufacturer",
+      dashboard,
+      'form:has(input[name="intent"])',
+      { intent: "publish" },
+    );
+    assert.ok((await published.text()).includes("Profile published"));
+    dashboard = await (await request("/manufacturer")).text();
+    const updatedBusiness = await submit(
+      "/manufacturer",
+      dashboard,
+      'form:has(input[name="business_name"])',
+      {
+        ...businessFields,
+        machines: JSON.stringify([
+          { ...machineOne, name: "Updated kirax", max_x_mm: 600 },
+        ]),
+        description: "Updated published business",
+      },
+    );
+    assert.ok(
+      (await updatedBusiness.text()).includes(
+        "Your published profile has been updated",
+      ),
+    );
+    assert.equal(
+      (
+        await admin
+          .from("manufacturer_profiles")
+          .select("published")
+          .eq("user_id", manufacturer.id)
+          .single()
+      ).data?.published,
+      true,
+      "Editing business details preserves publication",
+    );
+    const editedMachines = await admin
+      .from("machines")
+      .select("*")
+      .eq("manufacturer_id", manufacturer.id);
+    assert.equal(
+      editedMachines.data?.length,
+      1,
+      "Removing a machine is persisted with the profile",
+    );
+    assert.equal(editedMachines.data?.[0].name, "Updated kirax");
+    assert.equal(editedMachines.data?.[0].max_x_mm, 600);
+    dashboard = await (await request("/manufacturer")).text();
+    const invalidPublication = await submit(
+      "/manufacturer",
+      dashboard,
+      'form:has(input[name="intent"])',
+      { intent: "invalid" },
+    );
+    assert.ok(
+      (await invalidPublication.text()).includes("Choose publish or unpublish"),
+    );
+    const unpublished = await submit(
+      "/manufacturer",
+      dashboard,
+      'form:has(input[name="intent"])',
+      { intent: "unpublish" },
+    );
+    assert.ok((await unpublished.text()).includes("Profile unpublished"));
+    assert.equal(
+      (
+        await admin
+          .from("manufacturer_profiles")
+          .select("published")
+          .eq("user_id", manufacturer.id)
+          .single()
+      ).data?.published,
+      false,
+    );
+    dashboard = await (await request("/manufacturer")).text();
+    const republished = await submit(
+      "/manufacturer",
+      dashboard,
+      'form:has(input[name="intent"])',
+      { intent: "publish" },
+    );
+    assert.ok((await republished.text()).includes("Profile published"));
     dashboard = await (await request("/manufacturer")).text();
     await submit("/manufacturer", dashboard, "header form", {});
     const designer = await signup("designer");
@@ -536,7 +645,90 @@ async function main() {
     assert.ok(
       (
         await (await request(`/manufacturers/${manufacturer.id}`)).text()
-      ).includes("Edited HTTP mill"),
+      ).includes("Updated published business"),
+    );
+    const directory = await (await request("/manufacturers")).text();
+    assert.ok(directory.includes("HTTP test workshop"));
+    assert.ok(directory.includes("Updated kirax"));
+    assert.ok(
+      !directory.includes(manufacturer.email),
+      "Manufacturer login email is never serialized to visitors",
+    );
+    assert.ok(
+      load(await (await request("/")).text())('nav a[href="/manufacturers"]')
+        .length,
+    );
+    assert.equal(
+      (
+        await admin
+          .from("machines")
+          .update({
+            brand: "Fixture machine brand",
+            model: "PX-40",
+            materials: ["Titanium Ti-6Al-4V"],
+            special_capabilities: ["threads"],
+            notes: "Fixture equipment notes",
+            tolerance_mm: 0.02,
+          })
+          .eq("manufacturer_id", manufacturer.id)
+      ).error,
+      null,
+    );
+    const machineProfile = await (
+      await request(`/manufacturers/${manufacturer.id}`)
+    ).text();
+    for (const text of [
+      "Fixture machine brand",
+      "PX-40",
+      "Fixture equipment notes",
+      "Titanium Ti-6Al-4V",
+      "threads",
+      "0.02",
+    ])
+      assert.ok(machineProfile.includes(text));
+    assert.equal(
+      (
+        await admin
+          .from("manufacturer_profiles")
+          .update({ description: "Live capability update" })
+          .eq("user_id", manufacturer.id)
+      ).error,
+      null,
+    );
+    assert.ok(
+      (await (await request("/manufacturers")).text()).includes(
+        "Live capability update",
+      ),
+    );
+    assert.equal(
+      (
+        await admin
+          .from("manufacturer_profiles")
+          .update({ published: false })
+          .eq("user_id", manufacturer.id)
+      ).error,
+      null,
+    );
+    const privateDirectory = await (await request("/manufacturers")).text();
+    assert.ok(!privateDirectory.includes("HTTP test workshop"));
+    assert.ok(!privateDirectory.includes("Updated kirax"));
+    const privateProfile = await (
+      await request(`/manufacturers/${manufacturer.id}`)
+    ).text();
+    assert.ok(privateProfile.includes("Profile unavailable"));
+    assert.ok(!privateProfile.includes("Fixture equipment notes"));
+    assert.ok(!privateProfile.includes("business@example.test"));
+    assert.equal(
+      (
+        await admin
+          .from("manufacturer_profiles")
+          .update({ published: true })
+          .eq("user_id", manufacturer.id)
+      ).error,
+      null,
+    );
+    console.log(
+      "PASS: authenticated directory, published profiles, full equipment details, live changes, private profile denial and login-email privacy",
     );
     // Persistent cookies grant a second protected read.
     assert.equal((await request("/")).status, 200);
@@ -587,7 +779,7 @@ async function main() {
     );
     assert.equal(newLogin.headers.get("location"), "/");
     console.log(
-      "PASS: real password signup, verification links/replay denial, role routing, onboarding, machine edits, published profile visibility, persistent sessions and email password recovery",
+      "PASS: real password signup, verification links/replay denial, role routing, named machine onboarding, published profile visibility, persistent sessions and email password recovery",
     );
     console.log(
       "PASS: production HTTP sign-in email/code, session cookies, protected route, empty state, create/read/update/delete and sign-out",

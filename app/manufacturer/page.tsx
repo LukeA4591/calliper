@@ -1,130 +1,155 @@
 import Link from "next/link";
+import { ArrowUpRight, CheckCircle2, FileText } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { AccountShell } from "@/components/account-shell";
-import {
-  BusinessForm,
-  MachineForm,
-  RemoveMachine,
-} from "@/components/manufacturer-forms";
+import { signOut } from "@/app/login/actions";
+import { Brand } from "@/components/brand";
+import { Button } from "@/components/ui/button";
+import { BusinessForm, PublicationForm } from "@/components/manufacturer-forms";
 import {
   profileSchema,
-  machineSchema,
-  processLabels,
+  profileMachineSchema,
 } from "@/lib/manufacturing/schemas";
+import "./manufacturer.css";
+
 export default async function ManufacturerDashboard() {
   const { supabase, userId } = await requireUser("manufacturer");
-  const [{ data: profile, error }, { data: machines, error: machineError }] =
-    await Promise.all([
-      supabase
-        .from("manufacturer_profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabase
-        .from("machines")
-        .select("*")
-        .eq("manufacturer_id", userId)
-        .order("name"),
-    ]);
-  if (error || machineError)
-    throw new Error(
-      "Could not load manufacturer data. Check the database migration.",
-    );
+  const { data: row, error } = await supabase
+    .from("manufacturer_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error)
+    throw new Error("Could not load your business profile. Please try again.");
+  const profile = row
+    ? { ...profileSchema.parse(row), user_id: userId }
+    : undefined;
+  const { data: machineRows, error: machineError } = await supabase
+    .from("machines")
+    .select("*")
+    .eq("manufacturer_id", userId)
+    .order("id");
+  if (machineError)
+    throw new Error("Could not load your machines. Please try again.");
+  const machines = (machineRows ?? []).map((row) =>
+    profileMachineSchema.parse(row),
+  );
   return (
-    <AccountShell
-      signedIn
-      title={
-        profile
-          ? "Manufacturer workspace"
-          : "Set up your manufacturing business"
-      }
-      description="Describe your real equipment and capabilities. Leave unknown specifications blank."
-    >
-      <ol className="onboarding-progress">
-        <li className={profile ? "status-success" : "status-warning"}>
-          {profile ? "✓" : "1."} Business profile
-        </li>
-        <li className={machines?.length ? "status-success" : "status-warning"}>
-          {machines?.length ? "✓" : "2."} Equipment
-        </li>
-        <li className={profile?.published ? "status-success" : "status-warning"}>
-          {profile?.published ? "✓ Published" : "3. Publish for matching"}
-        </li>
-      </ol>
-      <section className="account-section">
-        <h2>
-          Business profile{" "}
-          <span
-            className={`status-badge ${profile?.published ? "status-success" : "status-warning"}`}
-          >
-            {profile?.published ? "Published" : "Private draft"}
-          </span>
-        </h2>
-        {profile?.published && (
-          <Link href={`/manufacturers/${userId}`}>
-            View published profile →
-          </Link>
-        )}
-        {profile && (
-          <p className="account-intro">
-            {profile.business_name} · {profile.location}
-          </p>
-        )}
-        <details open={!profile}>
-          <summary>
-            {profile ? "Edit business profile" : "Create business profile"}
-          </summary>
-          <BusinessForm
-            userId={userId}
-            profile={
-              profile
-                ? { ...profileSchema.parse(profile), user_id: userId }
-                : undefined
-            }
-          />
-        </details>
-      </section>
-      <section className="account-section">
-        <h2>Machines & equipment ({machines?.length ?? 0})</h2>
-        {!profile ? (
-          <p>Save your business profile first, then add machines here.</p>
-        ) : (
-          <>
-            {!machines?.length && (
+    <div className="manufacturer-workspace">
+      <header className="manufacturer-nav">
+        <Link href="/" aria-label="Calliper home">
+          <Brand />
+        </Link>
+        <span>MANUFACTURER WORKSPACE</span>
+        <Link className="manufacturer-directory-link" href="/manufacturers">
+          Manufacturers
+        </Link>
+        <form action={signOut}>
+          <Button variant="ghost">Sign out</Button>
+        </form>
+      </header>
+      <main id="main">
+        <section className="manufacturer-hero">
+          <div className="manufacturer-hero-inner">
+            <p className="manufacturer-eyebrow">
+              YOUR BUSINESS. YOUR CAPABILITIES.
+            </p>
+            <h1>
+              Good work starts
+              <br />
+              with the right connection.
+            </h1>
+            <p>
+              Show engineers what you can make.
+              <br />
+              One business profile. Everything they need to get in touch.
+            </p>
+            <div className="manufacturer-hero-footer">
+              <span>YOUR MANUFACTURING PROFILE</span>
+              <span>
+                01 / DETAILS &nbsp; 02 / CAPABILITIES &nbsp; 03 / AVAILABILITY
+              </span>
+            </div>
+          </div>
+        </section>
+        <div className="manufacturer-content">
+          <div className="manufacturer-page-heading">
+            <div>
+              <p className="manufacturer-eyebrow">BUILT AROUND YOUR BUSINESS</p>
+              <h2>
+                {profile
+                  ? "Your business profile"
+                  : "Set up your business profile"}
+              </h2>
               <p>
-                No equipment yet. Add at least one machine, then publish your
-                business profile.
+                Keep your capabilities in one place. Update them whenever things
+                change.
               </p>
-            )}
-            {machines?.map((row) => (
-              <article key={row.id} className="machine-record">
-                <h3>{row.name}</h3>
-                <p>
-                  {processLabels[machineSchema.parse(row).category]} ·{" "}
-                  {[row.brand, row.model].filter(Boolean).join(" ") ||
-                    "Brand/model unspecified"}
-                </p>
-                <details>
-                  <summary>Edit capabilities</summary>
-                  <MachineForm
-                    userId={userId}
-                    machine={{
-                      ...machineSchema.parse(row),
-                      id: row.id,
-                      manufacturer_id: row.manufacturer_id,
-                    }}
-                  />
-                </details>
-                <RemoveMachine id={row.id} userId={userId} />
-              </article>
-            ))}
-            <details open={!machines?.length}>
-              <summary>Add a machine</summary>
-              <MachineForm userId={userId} />
-            </details>
-          </>
-        )}
-      </section>
-    </AccountShell>
+            </div>
+            <span
+              className={`manufacturer-status ${profile?.published ? "status-success" : "manufacturer-draft"}`}
+            >
+              {profile?.published ? (
+                <CheckCircle2 size={15} aria-hidden="true" />
+              ) : (
+                <FileText size={15} aria-hidden="true" />
+              )}
+              {profile?.published
+                ? "Published"
+                : profile
+                  ? "Private draft"
+                  : "Not saved yet"}
+            </span>
+          </div>
+          <div className="manufacturer-layout">
+            <BusinessForm
+              userId={userId}
+              profile={profile}
+              machines={machines}
+            />
+            <aside className="manufacturer-sidebar">
+              <nav aria-label="Business profile sections">
+                <p className="manufacturer-eyebrow">IN YOUR PROFILE</p>
+                <a href="#business-details">
+                  <span>01</span>Your business
+                  <ArrowUpRight size={15} />
+                </a>
+                <a href="#business-capabilities">
+                  <span>02</span>What you can make
+                  <ArrowUpRight size={15} />
+                </a>
+                <a href="#business-capacity">
+                  <span>03</span>Working with you
+                  <ArrowUpRight size={15} />
+                </a>
+              </nav>
+              <section className="manufacturer-card" id="publish-profile">
+                <PublicationForm
+                  userId={userId}
+                  published={profile?.published ?? false}
+                  hasProfile={!!profile}
+                />
+                {profile?.published && (
+                  <Link
+                    className="manufacturer-profile-link"
+                    href={`/manufacturers/${userId}`}
+                  >
+                    View published profile
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </Link>
+                )}
+              </section>
+              <p className="manufacturer-sidebar-note">
+                Only your listed business contact details are shared. Your login
+                email isn’t added to your profile automatically.
+              </p>
+            </aside>
+          </div>
+        </div>
+      </main>
+      <footer className="manufacturer-footer">
+        <Brand />
+        <p>From drawing to doing.</p>
+      </footer>
+    </div>
   );
 }

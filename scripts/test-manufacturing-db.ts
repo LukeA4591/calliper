@@ -181,6 +181,69 @@ export async function testManufacturingDatabase(local: Record<string, string>) {
       ).error,
       null,
     );
+    // The complete-profile RPC must keep ownership and roll back all partial writes.
+    const machinePayload = {
+      id: machine.id,
+      name: "Updated mill",
+      category: "cnc_milling_3_axis",
+      max_x_mm: 500,
+      max_y_mm: null,
+      max_z_mm: null,
+    };
+    assert.ok(
+      (
+        await other.rpc("save_manufacturer_profile", {
+          business: { ...profile, business_name: "Must roll back" },
+          equipment: [machinePayload],
+        })
+      ).error,
+    );
+    assert.equal(
+      (
+        await other
+          .from("manufacturer_profiles")
+          .select("business_name")
+          .eq("user_id", ids[1])
+          .single()
+      ).data?.business_name,
+      profile.business_name,
+    );
+    assert.ok(
+      (
+        await designer.rpc("save_manufacturer_profile", {
+          business: profile,
+          equipment: [],
+        })
+      ).error,
+    );
+    assert.ok(
+      (
+        await maker.rpc("save_manufacturer_profile", {
+          business: { ...profile, business_name: "Invalid sizes" },
+          equipment: [{ ...machinePayload, max_x_mm: -1 }],
+        })
+      ).error,
+    );
+    assert.equal(
+      (
+        await maker
+          .from("manufacturer_profiles")
+          .select("business_name")
+          .eq("user_id", ids[0])
+          .single()
+      ).data?.business_name,
+      profile.business_name,
+    );
+    assert.equal(
+      (
+        await maker
+          .from("machines")
+          .select("max_x_mm")
+          .eq("id", machine.id)
+          .single()
+      ).data?.max_x_mm,
+      500,
+    );
     const fixture = createFixture();
     const review = groundDrawingReview(
       {

@@ -1,0 +1,496 @@
+/* Designer workspace: shared Calliper palette, scoped away from auth and print. */
+.designer-app {
+  background: var(--surface);
+}
+.designer-app .workspace-body {
+  max-width: none;
+}
+.designer-app .app-navigation {
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 88px;
+  height: auto;
+  padding: 20px 5%;
+  gap: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.designer-app .app-navigation .calliper-logo {
+  filter: none;
+  width: 148px;
+  height: auto;
+}
+.designer-nav-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+  white-space: nowrap;
+}
+.designer-app .app-navigation nav {
+  align-self: center;
+}
+.designer-app .app-navigation .nav-item {
+  color: var(--accent);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+}
+.designer-app .app-navigation .nav-item:hover,
+.designer-app .app-navigation .nav-item.active {
+  color: var(--accent);
+  background: var(--accent-fill);
+}
+.designer-app .app-navigation .nav-item.active::after {
+  display: none;
+}
+.designer-app .app-navigation .workspace-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.designer-app .app-navigation form button {
+  color: var(--accent);
+}
+.designer-app .app-navigation form button:hover {
+  background: var(--accent-fill);
+}
+.designer-app .app-navigation > button.rounded-md {
+  color: var(--surface);
+  background: var(--accent);
+}
+.designer-app button.rounded-md {
+  border-radius: var(--radius-md);
+}
+.designer-app .projects-page {
+  max-width: none;
+  padding: 0;
+}
+.designer-hero {
+  background: var(--accent);
+  color: var(--surface);
+  position: relative;
+  isolation: isolate;
+}
+.designer-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.09;
+  background-image:
+    linear-gradient(to right, white 1px, transparent 1px),
+    linear-gradient(to bottom, white 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to right, transparent, black);
+}
+.designer-hero-inner {
+  max-width: 1280px;
+  padding: 24px 32px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.designer-eyebrow,
+.designer-dialog-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  line-height: 1.6;
+  font-weight: 600;
+}
+.designer-hero h1 {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+  margin: 0 0 8px;
+}
+.designer-hero-copy {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.designer-library {
+  max-width: 1280px;
+  margin: auto;
+  padding: 24px 32px 32px;
+}
+.designer-project-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 10px 14px;
+  color: var(--surface);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+}
+.designer-app .library-toolbar {
+  margin-top: 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  gap: 24px;
+}
+.designer-app .library-toolbar .library-search {
+  min-width: 0;
+  min-height: 46px;
+}
+.designer-app .library-toolbar select {
+  min-height: 46px;
+  padding-inline: 12px 32px;
+}
+.designer-app .library-toolbar input:focus-visible {
+  outline: 0;
+}
+.designer-app .library-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.designer-app .library-table {
+  box-shadow: none;
+}
+.designer-app .library-table th {
+  background: var(--accent-fill);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 18px 24px;
+}
+.designer-app .library-table td {
+  padding: 24px;
+}
+.designer-app .project-title {
+  color: var(--accent);
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+.designer-app .library-meta {
+  line-height: 1.6;
+}
+.designer-app .library-priority {
+  color: var(--danger);
+}
+.designer-app .library-empty {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 24px;
+  margin-top: 16px;
+  background: var(--surface);
+}
+.designer-empty-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--accent-fill);
+  color: var(--accent);
+  margin: 0 auto 20px;
+}
+.designer-app .library-empty h2 {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+.designer-app .library-empty p {
+  margin: 12px 0 24px;
+}
+.designer-app .legacy-import {
+  padding: 24px 0;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.designer-app .legacy-import p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.designer-app .library-footnote {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.8;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+/* Keep drawing controls compact and panels independently scrollable. */
+.designer-app.drawing-app .app-navigation {
+  min-height: 72px;
+  padding-block: 12px;
+}
+.designer-app .drawing-heading {
+  background: var(--accent);
+  color: var(--surface);
+  padding: 16px 24px;
+}
+.designer-app .drawing-identity h1 {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-size: 19px;
+}
+.designer-app .drawing-identity p,
+.designer-app .drawing-identity h1 span {
+  color: rgba(255, 255, 255, 0.8);
+}
+.designer-app .drawing-back {
+  color: var(--surface);
+}
+.designer-app .drawing-back:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.designer-app .drawing-actions button {
+  background: transparent;
+  color: var(--surface);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.designer-app .drawing-analysis-controls > button:last-child {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: transparent;
+}
+.designer-app .drawing-actions button:disabled {
+  opacity: 0.55;
+}
+.designer-app .drawing-heading button:focus-visible {
+  outline-color: var(--surface);
+}
+.designer-app .drawing-explorer {
+  gap: 16px;
+  padding: 16px;
+  background: var(--accent-fill);
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.designer-app .drawing-explorer.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.designer-app .drawing-canvas-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.designer-app .drawing-canvas-panel .drawing-viewer {
+  border-radius: 0;
+  box-shadow: none;
+}
+.designer-app .drawing-canvas-panel .drawing-viewport {
+  background: color-mix(in srgb, var(--ink) 3%, var(--surface));
+}
+.designer-app .detected-issues {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.designer-app .detected-issues-heading {
+  padding: 20px;
+  background: var(--surface);
+}
+.designer-app .detected-issues-heading h2 {
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+.designer-app .detected-issue {
+  padding: 12px 16px;
+}
+.designer-app .detected-issues .issue-panel {
+  padding: 16px 20px;
+}
+.designer-app .detected-issues .evidence-box {
+  background: var(--accent-fill);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.designer-app .detected-issues .detail-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.designer-app .drawing-statusbar {
+  background: var(--surface);
+  padding-block: 8px;
+}
+/* Upload, analysis and export dialogs share the workspace's form language. */
+.designer-app .forge-dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 80px rgba(26, 29, 33, 0.18);
+}
+.designer-app .dialog-heading {
+  padding: 24px 32px;
+  background: var(--accent);
+  color: var(--surface);
+  align-items: flex-start;
+}
+.designer-app .designer-dialog-eyebrow {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 10px;
+}
+.designer-app .dialog-heading h2 {
+  font-size: 26px;
+  letter-spacing: -0.045em;
+}
+.designer-app .dialog-heading button {
+  color: var(--surface);
+  border-radius: var(--radius-sm);
+}
+.designer-app .dialog-heading button:focus-visible {
+  outline-color: var(--surface);
+}
+.designer-app .analysis-form {
+  padding: 24px 32px 32px;
+  gap: 24px;
+}
+.designer-app .analysis-form .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.designer-app .analysis-form label {
+  min-width: 0;
+}
+.designer-app .analysis-form input:not([type="file"]):not([type="checkbox"]),
+.designer-app .analysis-form select {
+  min-width: 0;
+  min-height: 46px;
+  padding: 12px;
+  font-size: 13px;
+}
+.designer-app .upload-zone {
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+}
+.designer-app .upload-zone strong {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.designer-app .local-note {
+  background: var(--accent-fill);
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-size: 12px;
+}
+.designer-app .report-actions {
+  padding: 24px 32px;
+}
+.designer-app .report-actions > div {
+  flex-wrap: wrap;
+}
+@media (max-width: 1100px) {
+  .designer-nav-label {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .designer-app .workspace-label {
+    display: none;
+  }
+  .designer-app .app-navigation > form {
+    margin-left: auto;
+  }
+  .designer-app .drawing-explorer {
+    grid-template-columns: minmax(0, 1fr) 290px;
+    gap: 8px;
+    padding: 8px;
+  }
+}
+@media (max-width: 700px) {
+  .designer-app .drawing-explorer {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .designer-app .drawing-explorer.sidebar-collapsed {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .designer-app .drawing-heading {
+    padding: 8px 16px;
+  }
+  .designer-app .drawing-identity h1 {
+    font-size: 16px;
+  }
+  .designer-app .detected-issues-heading {
+    padding: 8px 16px;
+  }
+  .designer-app .detected-issues .issue-panel {
+    padding: 8px 16px;
+  }
+}
+@media (max-width: 640px) {
+  .designer-app .app-navigation {
+    padding: 12px 16px;
+    gap: 8px 16px;
+  }
+  .designer-app .app-navigation .calliper-logo {
+    width: 132px;
+  }
+  .designer-app .app-navigation nav {
+    align-self: center;
+    height: auto;
+  }
+  .designer-app .app-navigation .nav-item {
+    padding: 8px 12px;
+  }
+  .designer-app .app-navigation > button {
+    margin: 0;
+  }
+  .designer-hero-inner {
+    padding: 20px 24px;
+  }
+  .designer-library {
+    padding: 32px 16px;
+  }
+  .designer-project-count {
+    white-space: nowrap;
+    padding: 8px;
+    font-size: 10px;
+  }
+  .designer-app .library-toolbar {
+    padding: 16px;
+    gap: 16px;
+  }
+  .designer-app .library-toolbar .library-search {
+    flex-basis: 100%;
+  }
+  .designer-app .library-table table {
+    min-width: 620px;
+  }
+  .designer-app .library-table th,
+  .designer-app .library-table td {
+    padding: 16px;
+  }
+  .designer-app .analysis-form .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .designer-app .dialog-heading,
+  .designer-app .analysis-form {
+    padding: 24px;
+  }
+  .designer-app .drawing-actions {
+    gap: 4px;
+  }
+  .designer-app .drawing-actions button {
+    font-size: 11px;
+  }
+}
+/* Two discovery tabs remain usable beside the creation action on narrow screens. */
+.designer-app .app-navigation nav {
+  gap: 4px;
+}
+@media (max-width: 640px) {
+  .designer-app .app-navigation {
+    gap: 8px;
+  }
+  .designer-app .app-navigation .nav-item {
+    font-size: 11px;
+    padding: 8px;
+  }
+  .designer-app .app-navigation > button.rounded-md {
+    font-size: 11px;
+    padding-inline: 8px;
+  }
+}

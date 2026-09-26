@@ -3,6 +3,7 @@ import { analysisSchema } from "@/lib/forge/types";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LandingPage } from "@/components/landing/landing-page";
+import "./designer.css";
 export const dynamic = "force-dynamic";
 export default async function Home() {
   const account = await getCurrentUser();
