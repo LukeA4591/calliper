@@ -75,6 +75,11 @@ export function ReviewCoverage({ review }: { review: DrawingReview }) {
           add the intended tolerance to the drawing.
         </p>
       )}
+      {review.manufacturing?.summary && (
+        <p className="review-scope-note">
+          Suggested manufacturing route: {review.manufacturing.summary}
+        </p>
+      )}
       <details className="review-coverage">
         <summary>Six-check results & analysis notes</summary>
         <ul className="review-checks">

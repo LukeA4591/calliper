@@ -1,9 +1,6 @@
 "use client";
-import { Brand } from "@/components/brand";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowDownToLine,
   ArrowLeft,
   PanelRightClose,
   PanelRightOpen,
@@ -22,10 +19,10 @@ import { PrintReport } from "./print-report";
 import { DrawingReviewControls } from "./drawing-review";
 import { applyDrawingReview } from "@/lib/forge/drawing-review";
 import { saveAnalysis } from "@/app/actions/analyses";
-import { signOut } from "@/app/login/actions";
 import { validatePdf } from "@/lib/forge/pdf";
 import { ProjectLibrary, type Project } from "./project-views";
 import { ManufacturingPlan } from "./manufacturing-plan";
+import { DesignerNav } from "@/components/designer-nav";
 
 export function ForgeWorkspace({
   aiConfigured,
@@ -33,12 +30,14 @@ export function ForgeWorkspace({
   email,
   savedAnalyses,
   initialProjectId,
+  openNewAnalysis = false,
 }: {
   userId: string;
   email: string;
   savedAnalyses: { analysis: Analysis; updatedAt: string }[];
   aiConfigured: boolean;
   initialProjectId?: string;
+  openNewAnalysis?: boolean;
 }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [projects, setProjects] = useState<Project[]>(savedAnalyses);
@@ -51,7 +50,9 @@ export function ForgeWorkspace({
     region?: DrawingRegion;
     page?: number;
   } | null>(null);
-  const [modal, setModal] = useState<"new" | "report" | null>(null);
+  const [modal, setModal] = useState<"new" | "report" | null>(
+    openNewAnalysis ? "new" : null,
+  );
   const [view, setView] = useState<"analysis" | "projects">("projects");
   const [storage, setStorage] = useState("Loading local projects…");
   const [notice, setNotice] = useState("");
@@ -177,34 +178,16 @@ export function ForgeWorkspace({
       <div
         className={`forge-app designer-app no-print ${view === "analysis" ? "drawing-app" : ""}`}
       >
-        <header className="app-navigation">
-          <Link className="forge-brand" href="/" aria-label="Calliper home">
-            <Brand />
-          </Link>
-          <span className="designer-nav-label">DESIGNER WORKSPACE</span>
-          <nav aria-label="Main navigation">
-            <button
-              aria-current={view === "projects" ? "page" : undefined}
-              className={view === "projects" ? "nav-item active" : "nav-item"}
-              onClick={() => setView("projects")}
-            >
-              Projects
-            </button>
-            <Link className="nav-item" href="/manufacturers">
-              Manufacturers
-            </Link>
-          </nav>
-          <span className="workspace-label">{email}</span>
-          <form action={signOut}>
-            <Button variant="ghost" size="sm">
-              Sign out
-            </Button>
-          </form>
+        <DesignerNav
+          email={email}
+          active="projects"
+          onProjects={() => setView("projects")}
+        >
           <Button size="sm" onClick={() => setModal("new")}>
             <Plus size={15} />
             New analysis
           </Button>
-        </header>
+        </DesignerNav>
 
         {storageError && (
           <div className="account-save-error" role="alert">
@@ -259,15 +242,6 @@ export function ForgeWorkspace({
                       );
                     }}
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Export report"
-                    onClick={() => setModal("report")}
-                  >
-                    <ArrowDownToLine size={16} />
-                    <span className="export-label">Export</span>
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

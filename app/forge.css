@@ -2603,7 +2603,7 @@
 .detected-issues-heading h2 { font-size: 14px; font-weight: 600; }
 .detected-issues-heading h2 span { margin-left: var(--space-1); color: var(--text-secondary); font-weight: 400; }
 .detected-issues-heading p { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
-.detected-issue-list { flex: 0 1 auto; max-height: 35%; min-height: 70px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; border-bottom: 1px solid var(--border); }
+.detected-issue-list { flex: 0 0 auto; max-height: min(28%, 200px); min-height: 92px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; border-bottom: 1px solid var(--border); }
 .detected-issue { width: 100%; display: flex; align-items: flex-start; gap: var(--space-1); padding: 12px var(--space-2); text-align: left; border-left: 3px solid transparent; border-bottom: 1px solid var(--border); }
 .detected-issue:last-child { border-bottom: 0; }
 .detected-issue:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
@@ -2638,7 +2638,6 @@
   .drawing-actions { width: 100%; justify-content: space-between; gap: 4px; }
   .drawing-actions .rounded-md { padding-inline: 8px; font-size: 11px; }
   .drawing-analysis-controls { gap: 4px; }
-  .drawing-actions .export-label { display: none; }
   .drawing-explorer { grid-template-columns: 1fr; grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
   .drawing-explorer.sidebar-collapsed { grid-template-rows: minmax(0, 1fr); }
   .detected-issues { border-left: 0; border-top: 1px solid var(--border); overflow: auto; display: block; overscroll-behavior: contain; }

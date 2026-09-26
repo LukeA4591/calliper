@@ -55,7 +55,6 @@ export function ManufacturingPlan({ analysis }: { analysis: Analysis }) {
           )}
           {material.source === "project" && " (from project settings)"}
         </p>
-        {plan.summary && <p className="plan-summary">{plan.summary}</p>}
       </div>
       <Button asChild size="sm" className="plan-action">
         <Link href={`/manufacturers?${search}`}>

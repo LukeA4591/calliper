@@ -273,7 +273,9 @@
   gap: 16px;
   padding: 16px;
   background: var(--accent-fill);
-  grid-template-columns: minmax(0, 1fr) 340px;
+  /* The inspector holds an issue list and full issue details, so it needs real
+     width; the drawing keeps the remaining space. */
+  grid-template-columns: minmax(42%, 1fr) minmax(460px, 36%);
 }
 .designer-app .drawing-explorer.sidebar-collapsed {
   grid-template-columns: minmax(0, 1fr);
@@ -305,10 +307,15 @@
   letter-spacing: -0.025em;
 }
 .designer-app .detected-issue {
-  padding: 12px 16px;
+  padding: 14px 20px;
+  gap: 12px;
 }
 .designer-app .detected-issues .issue-panel {
-  padding: 16px 20px;
+  padding: 20px;
+}
+.designer-app .detected-issues .issue-description {
+  font-size: 13px;
+  line-height: 1.7;
 }
 .designer-app .detected-issues .evidence-box {
   background: var(--accent-fill);
@@ -402,7 +409,7 @@
     margin-left: auto;
   }
   .designer-app .drawing-explorer {
-    grid-template-columns: minmax(0, 1fr) 290px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     gap: 8px;
     padding: 8px;
   }
@@ -512,13 +519,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  flex-wrap: wrap;
-  padding: 14px 5%;
+  flex-wrap: nowrap;
+  padding: 10px 5%;
   border-bottom: 1px solid var(--border);
   background: var(--accent-fill);
 }
 .manufacturing-plan .plan-copy {
   min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -569,6 +577,7 @@
   .designer-app .manufacturing-plan {
     padding: 12px 16px;
     gap: 12px;
+    flex-wrap: wrap;
   }
   .manufacturing-plan .plan-action {
     width: 100%;
@@ -583,4 +592,24 @@
 .manufacturing-plan .plan-material strong {
   font-weight: 500;
   color: var(--ink);
+}
+/* Keep the band a single row: chips scroll sideways rather than pushing the action down. */
+.manufacturing-plan .plan-processes {
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.manufacturing-plan .plan-processes::-webkit-scrollbar {
+  display: none;
+}
+.manufacturing-plan .plan-processes li {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .manufacturing-plan .plan-processes {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }

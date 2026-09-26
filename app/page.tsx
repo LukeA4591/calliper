@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ project?: string }>;
+  searchParams: Promise<{ project?: string; new?: string }>;
 }) {
   const account = await getCurrentUser();
   if (!account) return <LandingPage />;
@@ -29,13 +29,14 @@ export default async function Home({
       ? [{ analysis: parsed.data, updatedAt: row.updated_at }]
       : [];
   });
-  const { project } = await searchParams;
+  const { project, new: startNew } = await searchParams;
   return (
     <ForgeWorkspace
       userId={userId}
       email={email}
       savedAnalyses={projects}
       initialProjectId={project}
+      openNewAnalysis={startNew === "1"}
       aiConfigured={!!process.env.AI_API_KEY?.trim()}
     />
   );

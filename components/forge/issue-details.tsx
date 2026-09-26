@@ -6,7 +6,6 @@ import {
   ChevronRight,
   CircleDot,
   MapPin,
-  ShieldCheck,
 } from "lucide-react";
 import type { Finding } from "@/lib/forge/types";
 
@@ -30,7 +29,7 @@ export function IssueDetails({
         <h2>Select an issue</h2>
         <p>
           Choose an annotation on the drawing or an issue above to inspect its
-          evidence and manufacturing considerations.
+          check, calculation and recommended review.
         </p>
       </aside>
     );
@@ -75,41 +74,6 @@ export function IssueDetails({
           </p>
         )}
         <p className="issue-description">{finding.description}</p>
-        <div className="evidence-box">
-          <div className="detail-label">
-            <ShieldCheck size={14} />{" "}
-            {finding.ai
-              ? "AI evidence · check against drawing"
-              : "Drawing evidence"}
-          </div>
-          {finding.evidence.map((evidence, i) => (
-            <div key={i}>
-              <p className="evidence-text">{evidence.text}</p>
-              <div className="measurement-grid">
-                {Object.entries(evidence.measurements).map(
-                  ([name, measurement]) => (
-                    <div key={name}>
-                      <span>{name}</span>
-                      <strong>
-                        {measurement.value}
-                        <small> {measurement.unit}</small>
-                      </strong>
-                    </div>
-                  ),
-                )}
-              </div>
-              <p className="review-scope-note">
-                {finding.ai
-                  ? `AI reading · ${finding.ai.locationSource === "pdf_text" ? "location from PDF text references" : finding.ai.locationSource === "vision" ? "approximate visual location" : "no located source"}`
-                  : "Saved drawing evidence"}
-              </p>
-            </div>
-          ))}
-        </div>
-        <section className="detail-section">
-          <h3>Why it matters</h3>
-          <p>{finding.manufacturingImpact}</p>
-        </section>
         <section className="detail-section">
           <h3>Recommended review</h3>
           <ol>

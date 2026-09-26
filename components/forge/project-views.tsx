@@ -30,7 +30,7 @@ function reviewState(analysis: Analysis) {
       : total
         ? `${total} issue${total === 1 ? "" : "s"} found`
         : "No issues found";
-  return { pending, open, unanalysed, status, label };
+  return { status, label };
 }
 
 function dateLabel(value: string) {
@@ -56,7 +56,6 @@ export function ProjectLibrary({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("newest");
   const entries = projects.map((project) => ({
     project,
@@ -64,20 +63,14 @@ export function ProjectLibrary({
   }));
   const search = query.trim().toLowerCase();
   const filtered = entries
-    .filter(({ project, ...state }) => {
+    .filter(({ project }) => {
       const a = project.analysis;
       return (
-        (!search ||
-          [a.projectName, a.filename, `Rev ${a.revision}`, a.material]
-            .join(" ")
-            .toLowerCase()
-            .includes(search)) &&
-        (status === "all" ||
-          (status === "pending"
-            ? state.pending > 0
-            : status === "open"
-              ? state.open > 0
-              : state.status === status))
+        !search ||
+        [a.projectName, a.filename, `Rev ${a.revision}`, a.material]
+          .join(" ")
+          .toLowerCase()
+          .includes(search)
       );
     })
     .sort((a, b) =>
@@ -116,19 +109,6 @@ export function ProjectLibrary({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search name, file, revision or material"
             />
-          </label>
-          <label>
-            Review status
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="all">All statuses</option>
-              <option value="not-started">Ready for AI review</option>
-              <option value="pending">Awaiting review</option>
-              <option value="open">Open issues</option>
-              <option value="reviewed">No outstanding reviews</option>
-            </select>
           </label>
           <label>
             Sort by
@@ -216,15 +196,9 @@ export function ProjectLibrary({
         ) : !filtered.length ? (
           <div className="library-empty">
             <h2>No projects match</h2>
-            <p>Try a different search or clear your filters.</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setQuery("");
-                setStatus("all");
-              }}
-            >
-              Clear filters
+            <p>Try a different search term.</p>
+            <Button variant="outline" onClick={() => setQuery("")}>
+              Clear search
             </Button>
           </div>
         ) : null}
