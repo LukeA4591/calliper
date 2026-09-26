@@ -21,51 +21,38 @@ export function DrawingReviewControls({
   configured: boolean;
   onResult: (result: ReviewResult) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<"analyse" | "notes" | null>(null);
   return (
-    <section className="drawing-review-summary" aria-label="AI drawing review">
-      <div className="section-heading">
-        <div>
-          <h2>AI drawing review</h2>
-          <p>
-            {analysis.review
-              ? "Inspect each flag, check its drawing evidence, then record your decision."
-              : "Find missing specifications and manufacturing concerns directly from the drawing."}
-          </p>
-        </div>
-        <Button disabled={!source} onClick={() => setOpen(true)}>
-          <ScanSearch size={16} />
-          {analysis.review ? "Run review again" : "Analyse drawing"}
+    <div className="drawing-analysis-controls">
+      {analysis.review && (
+        <Button variant="ghost" size="sm" onClick={() => setOpen("notes")}>
+          Analysis notes
         </Button>
-      </div>
-      {analysis.review ? (
-        <ReviewCoverage review={analysis.review} />
-      ) : (
-        <p className="review-scope-note">
-          Six checks: general tolerances, material, surface finish, blind-hole
-          L/D, shoulder radius and explicit tolerances against ISO 2768. Passing
-          tolerances are grouped into one low-priority check.
-        </p>
       )}
-      {analysis.extraction && !analysis.review && (
-        <p className="review-scope-note">
-          This drawing has an earlier measurement extraction. It remains
-          available under Previous measurements until you run a new review.
-        </p>
+      <Button size="sm" disabled={!source} onClick={() => setOpen("analyse")}>
+        <ScanSearch size={16} />
+        {analysis.review ? "Reanalyse" : "Analyse drawing"}
+      </Button>
+      {open === "notes" && analysis.review && (
+        <Modal title="Analysis notes" onClose={() => setOpen(null)}>
+          <div className="analysis-notes">
+            <ReviewCoverage review={analysis.review} />
+          </div>
+        </Modal>
       )}
-      {open && (
+      {open === "analyse" && (
         <ReviewDialog
           analysis={analysis}
           source={source}
           configured={configured}
-          onClose={() => setOpen(false)}
+          onClose={() => setOpen(null)}
           onResult={(result) => {
             onResult(result);
-            setOpen(false);
+            setOpen(null);
           }}
         />
       )}
-    </section>
+    </div>
   );
 }
 export function ReviewCoverage({ review }: { review: DrawingReview }) {
@@ -207,7 +194,7 @@ function ReviewDialog({
         <p className="dialog-intro">
           AI flags potential errors directly on your drawing. Include the title
           block, general notes and relevant feature views. You review the
-          evidence and confirm or dismiss each issue.
+          evidence and explore each issue on the drawing.
         </p>
         <fieldset className="page-selection" disabled={busy}>
           <legend>
@@ -267,10 +254,7 @@ function ReviewDialog({
               disabled={busy}
               onChange={(e) => setReplace(e.target.checked)}
             />
-            <span>
-              Replace the previous AI results and review decisions with this new
-              analysis.
-            </span>
+            <span>Replace the previous AI results with this new analysis.</span>
           </label>
         )}
         {!configured && (

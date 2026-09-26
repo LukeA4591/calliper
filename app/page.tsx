@@ -1,5 +1,4 @@
 import { ForgeWorkspace } from "@/components/forge/workspace";
-import { createFixture } from "@/lib/forge/fixture";
 import { analysisSchema } from "@/lib/forge/types";
 import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -18,7 +17,7 @@ export default async function Home() {
     );
   const projects = (data ?? []).flatMap((row) => {
     const parsed = analysisSchema.safeParse(row.data);
-    return parsed.success
+    return parsed.success && parsed.data.mode === "uploaded"
       ? [{ analysis: parsed.data, updatedAt: row.updated_at }]
       : [];
   });
@@ -27,7 +26,6 @@ export default async function Home() {
       userId={userId}
       email={email}
       savedAnalyses={projects}
-      initialAnalysis={createFixture()}
       aiConfigured={!!process.env.AI_API_KEY?.trim()}
     />
   );

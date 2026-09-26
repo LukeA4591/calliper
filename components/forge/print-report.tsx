@@ -18,7 +18,7 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
       </p>
       <p>
         {analysis.review
-          ? "AI drawing review: potential errors and manufacturing concerns. Engineer confirmation required."
+          ? "AI drawing review: potential errors and manufacturing concerns. Engineering judgement required."
           : analysis.mode === "fixture"
             ? "SAMPLE ANALYSIS: authored drawing inputs and deterministic demo rules. No AI extraction."
             : analysis.extraction
@@ -95,29 +95,17 @@ export function PrintReport({ analysis }: { analysis: Analysis }) {
           ? `Review basis: ${analysis.review.version}. Six-check drawing review with ISO 2768-1 linear tolerance screening.`
           : `Profile: ${analysis.profile.version}. ${analysis.profile.provenance}`}
       </p>
-      <p>
-        {analysis.findings.length} findings ·{" "}
-        {analysis.findings.filter((f) => f.status === "open").length} open
-      </p>
+      <p>{analysis.findings.length} detected issues</p>
       {analysis.findings.map((finding, index) => (
         <section key={finding.id}>
           <h3>
             {index + 1}. {finding.title}
           </h3>
           <p>
-            <strong>
-              {finding.severity.toUpperCase()} · {finding.status.toUpperCase()}
-            </strong>{" "}
-            · {finding.ruleId}
+            <strong>{finding.severity.toUpperCase()} priority</strong> ·{" "}
+            {finding.ruleId}
           </p>
           <p>{finding.description}</p>
-          {finding.ai && (
-            <p>
-              Engineer decision: {finding.ai.decision}.{" "}
-              {finding.ai.reviewerNote || "No review note."} AI evidence and
-              source locations remain suggestions.
-            </p>
-          )}
           {finding.ai?.priorityReason && (
             <p>Priority: {finding.ai.priorityReason}</p>
           )}

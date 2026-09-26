@@ -421,42 +421,48 @@
   height: 100%;
 }
 .severity-high {
-  --issue-color: var(--warning);
-  --issue-bg: var(--warning-fill);
+  --issue-color: var(--danger);
+  --issue-bg: var(--danger-fill);
 }
 .severity-medium {
   --issue-color: var(--warning);
-  --issue-bg: var(--warning-fill);
+  --issue-bg: rgba(249, 115, 22, 0.14);
+  --issue-marker: #c2410c;
+  --issue-label-bg: #fb923c;
+  --issue-label-text: var(--ink);
 }
 .severity-low {
-  --issue-color: var(--warning);
-  --issue-bg: var(--warning-fill);
+  --issue-color: #854d0e;
+  --issue-bg: rgba(250, 204, 21, 0.18);
+  --issue-marker: #a17a00;
+  --issue-label-bg: #facc15;
+  --issue-label-text: var(--ink);
 }
 .drawing-marker {
   position: absolute;
-  border: 1.5px dashed var(--issue-color);
+  border: 1.5px dashed var(--issue-marker, var(--issue-color));
   border-radius: 2px;
-  background: color-mix(in srgb, var(--issue-color) 4%, transparent);
+  background: transparent;
 }
 .drawing-marker:hover {
-  background: color-mix(in srgb, var(--issue-color) 12%, transparent);
+  background: color-mix(in srgb, var(--issue-color) 3%, transparent);
 }
 .drawing-marker.is-selected {
-  border: 2px solid var(--issue-color);
-  background: color-mix(in srgb, var(--issue-color) 8%, transparent);
+  border: 2px solid var(--issue-marker, var(--issue-color));
+  background: color-mix(in srgb, var(--issue-color) 4%, transparent);
   outline: 3px solid color-mix(in srgb, var(--issue-color) 10%, transparent);
 }
 .drawing-marker > span {
   position: absolute;
-  left: -12px;
-  top: -13px;
+  left: -2px;
+  bottom: calc(100% + 4px);
   width: 25px;
   height: 25px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--surface);
-  background: var(--issue-color);
+  color: var(--issue-label-text, var(--surface));
+  background: var(--issue-label-bg, var(--issue-color));
   font-size: 11px;
   font-weight: 600;
   box-shadow: 0 0 0 3px var(--surface);
@@ -602,7 +608,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--issue-color);
+  background: var(--issue-marker, var(--issue-color));
 }
 .status-badge {
   font-size: 11px;
@@ -2354,7 +2360,7 @@
 .local-save.save-pending { color: var(--warning); }
 .local-save.save-error { color: var(--danger); }
 .local-save > span { background: currentColor; }
-.drawing-marker > span { display: flex; justify-content: center; gap: 4px; width: 42px; border-radius: var(--radius-md); }
+.drawing-marker > span { display: flex; justify-content: center; gap: 4px; width: max-content; padding: 0 8px; white-space: nowrap; border-radius: var(--radius-md); }
 /* Green text clears 4.5:1 on paper/white, but not on its translucent fill.
    Filled completion labels use ink text and a subtle green border. */
 .status-success, .status-badge.status-success, .status-addressed, .decision-confirmed, .auth-feedback-success,
@@ -2512,4 +2518,96 @@
   .review-checks {
     grid-template-columns: 1fr;
   }
+}
+
+/* Drawing-first workspace: the canvas and inspector scroll independently. */
+.drawing-app {
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.drawing-app > .app-navigation { flex-shrink: 0; }
+.drawing-app > .workspace-body { flex: 1; min-height: 0; width: 100%; max-width: none; }
+.drawing-workspace { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.drawing-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); }
+.drawing-identity { display: flex; gap: var(--space-2); align-items: center; min-width: 0; }
+.drawing-identity > div { min-width: 0; }
+.drawing-identity h1 { font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawing-identity h1 span { font-size: 12px; color: var(--text-secondary); font-weight: 400; margin-left: var(--space-1); }
+.drawing-identity p { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawing-back { color: var(--accent); flex-shrink: 0; padding: var(--space-1); border-radius: var(--radius-sm); }
+.drawing-back:hover { background: var(--accent-fill); }
+.drawing-actions, .drawing-analysis-controls { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.drawing-explorer { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.drawing-explorer.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+.drawing-canvas-panel { min-height: 0; min-width: 0; overflow: hidden; }
+.drawing-canvas-panel .drawing-viewer { height: 100%; border: 0; border-radius: 0; }
+.drawing-canvas-panel .viewer-toolbar { background: var(--surface); padding-inline: var(--space-2); }
+.drawing-canvas-panel .drawing-viewport { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.drawing-canvas-panel .viewer-footer { background: var(--surface); }
+.detected-issues { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--border); background: var(--surface); }
+.detected-issues-heading { padding: var(--space-2); border-bottom: 1px solid var(--border); }
+.detected-issues-heading h2 { font-size: 14px; font-weight: 600; }
+.detected-issues-heading h2 span { margin-left: var(--space-1); color: var(--text-secondary); font-weight: 400; }
+.detected-issues-heading p { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.detected-issue-list { flex: 0 1 auto; max-height: 35%; min-height: 70px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; border-bottom: 1px solid var(--border); }
+.detected-issue { width: 100%; display: flex; align-items: flex-start; gap: var(--space-1); padding: 12px var(--space-2); text-align: left; border-left: 3px solid transparent; border-bottom: 1px solid var(--border); }
+.detected-issue:last-child { border-bottom: 0; }
+.detected-issue:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+.detected-issue[aria-pressed="true"] { border-left-color: var(--accent); background: var(--accent-fill); }
+.detected-issue-number { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-secondary); padding-top: 2px; min-width: 14px; }
+.detected-issue-title { flex: 1; font-size: 12px; line-height: 1.5; }
+.detected-issue-title small { display: block; color: var(--text-secondary); font-size: 10px; margin-top: 4px; }
+.detected-issue .severity-badge { padding: 2px 6px; font-size: 10px; }
+.detected-issues .issue-panel { flex: 1; min-height: 0; max-height: none; padding: var(--space-2); border: 0; border-radius: 0; box-shadow: none; }
+.detected-issues .panel-heading { min-height: 32px; padding-bottom: var(--space-1); flex-shrink: 0; }
+.detected-issues .issue-panel-content { padding: var(--space-2) 4px 0 0; overscroll-behavior: contain; }
+.detected-issues .issue-panel h2 { font-size: 19px; line-height: 1.35; margin: 12px 0; }
+.detected-issues .evidence-box { padding: 12px; margin: var(--space-2) 0; }
+.detected-issues .detail-section { margin-top: var(--space-2); }
+.detected-issues .empty-details { justify-content: center; padding: var(--space-3); overflow: auto; }
+.detected-issues .empty-details h2 { font-size: 15px; }
+.detected-issues .empty-details p, .detected-issues-empty p { font-size: 12px; color: var(--text-secondary); }
+.detected-issues-empty { padding: var(--space-3); }
+.detected-issues-empty h3 { font-weight: 500; margin-bottom: var(--space-1); }
+.drawing-statusbar { display: flex; justify-content: space-between; gap: var(--space-2); padding: 6px var(--space-3); border-top: 1px solid var(--border); font-size: 10px; color: var(--text-secondary); }
+.analysis-notes { padding: var(--space-3); overflow: auto; }
+.drawing-workspace > .account-save-error { max-height: 30%; overflow: auto; flex-shrink: 0; }
+@media (max-width: 1000px) {
+  .drawing-heading { flex-wrap: wrap; padding: var(--space-1) var(--space-2); gap: var(--space-1); }
+  .drawing-actions { margin-left: auto; }
+  .drawing-explorer { grid-template-columns: minmax(0, 1fr) 290px; }
+  .drawing-statusbar > span:last-child { display: none; }
+}
+@media (max-width: 700px) {
+  .drawing-heading { align-items: flex-start; }
+  .drawing-identity { width: 100%; }
+  .drawing-actions { width: 100%; justify-content: space-between; gap: 4px; }
+  .drawing-actions .rounded-md { padding-inline: 8px; font-size: 11px; }
+  .drawing-analysis-controls { gap: 4px; }
+  .drawing-actions .export-label { display: none; }
+  .drawing-explorer { grid-template-columns: 1fr; grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
+  .drawing-explorer.sidebar-collapsed { grid-template-rows: minmax(0, 1fr); }
+  .detected-issues { border-left: 0; border-top: 1px solid var(--border); overflow: auto; display: block; overscroll-behavior: contain; }
+  .detected-issue-list { max-height: none; overflow: visible; }
+  .detected-issues .issue-panel-content { overflow: visible; }
+  .detected-issues .empty-details { display: none; }
+  .drawing-canvas-panel .viewer-toolbar { gap: 4px; padding: 4px; flex-wrap: wrap; }
+  .drawing-canvas-panel .toolbar-group { gap: 0; }
+  .drawing-canvas-panel .tool-active, .drawing-canvas-panel .toolbar-divider { display: none; }
+  .drawing-canvas-panel .viewer-footer { display: none; }
+  .drawing-statusbar { padding-inline: var(--space-2); font-size: 9px; }
+}
+.mobile-issue-picker { display: none; }
+@media (max-width: 700px) {
+  .detected-issues { display: flex; overflow: hidden; }
+  .detected-issues-heading { padding: var(--space-1) var(--space-2); }
+  .detected-issues-heading p { display: none; }
+  .detected-issue-list { display: none; }
+  .mobile-issue-picker { display: block; padding: 4px var(--space-2); }
+  .mobile-issue-picker select { width: 100%; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px; font-size: 12px; }
+  .detected-issues .issue-panel { padding-top: var(--space-1); }
+  .detected-issues .issue-panel-content { overflow: auto; }
 }

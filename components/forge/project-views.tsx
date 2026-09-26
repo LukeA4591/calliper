@@ -50,19 +50,18 @@ function dateLabel(value: string) {
 export function ProjectLibrary({
   projects,
   onOpen,
-  onSample,
+  onCreate,
   onImport,
 }: {
   projects: Project[];
   onOpen: (project: Project) => void;
-  onSample: () => void;
+  onCreate: () => void;
   onImport: () => Promise<string>;
 }) {
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [source, setSource] = useState("all");
   const [sort, setSort] = useState("newest");
   const entries = projects.map((project) => ({
     project,
@@ -83,8 +82,7 @@ export function ProjectLibrary({
             ? state.pending > 0
             : status === "open"
               ? state.open > 0
-              : state.status === status)) &&
-        (source === "all" || a.mode === source)
+              : state.status === status))
       );
     })
     .sort((a, b) =>
@@ -123,17 +121,6 @@ export function ProjectLibrary({
             <option value="pending">Awaiting review</option>
             <option value="open">Open findings</option>
             <option value="reviewed">No outstanding reviews</option>
-          </select>
-        </label>
-        <label>
-          Source
-          <select
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
-          >
-            <option value="all">All drawings</option>
-            <option value="uploaded">Uploads</option>
-            <option value="fixture">Samples</option>
           </select>
         </label>
         <label>
@@ -183,8 +170,7 @@ export function ProjectLibrary({
                         Rev {a.revision} · {a.filename}
                       </span>
                       <span className="library-meta">
-                        {a.material} · {a.pages.length} pages ·{" "}
-                        {a.mode === "fixture" ? "Sample" : "Upload"}
+                        {a.material} · {a.pages.length} pages
                       </span>
                     </td>
                     <td>
@@ -223,7 +209,13 @@ export function ProjectLibrary({
           </tbody>
         </table>
       </div>
-      {!filtered.length && (
+      {!projects.length ? (
+        <div className="library-empty">
+          <h2>No drawings yet</h2>
+          <p>Upload your first PDF drawing to start a review.</p>
+          <Button onClick={onCreate}>New analysis</Button>
+        </div>
+      ) : !filtered.length ? (
         <div className="library-empty">
           <h2>No projects match</h2>
           <p>Try a different search or clear your filters.</p>
@@ -232,25 +224,12 @@ export function ProjectLibrary({
             onClick={() => {
               setQuery("");
               setStatus("all");
-              setSource("all");
             }}
           >
             Clear filters
           </Button>
         </div>
-      )}
-      <div className="revision-demo">
-        <div>
-          <h2>Explore a revised drawing</h2>
-          <p>
-            The revised sample changes three dimensions. The locating tolerance
-            remains for review.
-          </p>
-        </div>
-        <Button variant="outline" onClick={onSample}>
-          Open revised sample <ArrowRight size={15} />
-        </Button>
-      </div>
+      ) : null}
       <details className="legacy-import">
         <summary>Import drawings saved before accounts</summary>
         <p>

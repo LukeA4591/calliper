@@ -48,11 +48,9 @@ export function Modal({
 export function NewAnalysisDialog({
   onClose,
   onCreate,
-  onDemo,
 }: {
   onClose: () => void;
   onCreate: (analysis: Analysis, pdf: File, step?: File) => Promise<void>;
-  onDemo: () => void;
 }) {
   const [file, setFile] = useState<File>();
   const [step, setStep] = useState<File>();
@@ -239,14 +237,6 @@ export function NewAnalysisDialog({
           </p>
         )}
         <div className="dialog-actions">
-          <button
-            type="button"
-            className="text-button"
-            disabled={busy}
-            onClick={onDemo}
-          >
-            Use sample drawing
-          </button>
           <Button type="submit" disabled={busy}>
             {busy ? "Opening…" : "Open drawing"}
           </Button>

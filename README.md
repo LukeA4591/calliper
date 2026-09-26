@@ -102,7 +102,7 @@ profiles/equipment, and each designer's analysis JSON (including requirements an
 PDF/STEP files stay in **account-scoped IndexedDB** on the device. On another browser you can see
 analysis history, but must reattach the original PDF to render it. New uploads record a SHA-256
 fingerprint to verify reattachment. The database and a verified account are required; the AI key
-is optional for reviewing the included sample and manually entering requirements.
+is optional for viewing uploaded drawings and manually entering requirements.
 
 ### 5. Start the app
 
@@ -112,8 +112,7 @@ pnpm dev
 
 Keep this terminal running and open [localhost:3000](http://localhost:3000).
 You should land on **Sign in**. Choose **Create an account**, select Designer or Manufacturer,
-and verify your email as described below. Designers land on **Projects**: open **Precision mounting
-bracket** to review the sample, or choose **New analysis** to upload. Manufacturers land on their
+and verify your email as described below. Designers land on **Projects**: choose **New analysis** to upload your first drawing. Manufacturers land on their
 business onboarding/dashboard.
 
 If port 3000 is occupied, run `pnpm dev --port 3100` and open
@@ -128,11 +127,10 @@ Restart the app after editing `.env.local`.
 2. Open [the local email inbox](http://127.0.0.1:55434) and follow the verification link.
    Press **Verify email** on the confirmation page. Links expire after 10 minutes and work once;
    GET requests do not consume them, to avoid email scanner/prefetch problems.
-3. You are signed in and directed to Projects. Upload a PDF or open the sample drawing.
+3. You are signed in and directed to Projects. Choose **New analysis** and upload a PDF.
 4. Sign out, register another email with **Manufacturer**, and verify it.
 5. Save a business profile as a draft, add at least one machine, then check **Publish** and save.
-6. Sign in as the designer. In a drawing, review **Manufacturer matching** requirements and
-   save them to see compatible/potential manufacturers and per-machine explanations.
+6. Sign in as the designer, upload a drawing and open the drawing viewer. Manufacturer matching is separate from this page; its underlying services and manufacturer profiles remain available.
 
 Unverified users cannot access protected routes, actions, or records. Roles cannot be changed
 through profile editing or user metadata. Existing pre-migration accounts become designers.
@@ -234,56 +232,45 @@ verification/recovery email templates and required confirmation setting.
 
 ## What works
 
-The workspace uses compact top navigation, a large drawing surface and a readable inspector.
-For uploaded drawings, **Measurements** contains the suggestion selector, confirmation forms,
-and **Coverage & notes**. **Findings** contains the issue list, filters and review decisions.
-**Analysis information** retains file metadata and attachment details; each finding's
-**Rule, assumptions & limitations** section retains its full technical context.
+The drawing page is a full-height PDF workspace with a collapsible **Detected Issues** sidebar.
+Drawings initially fit the available page area, including after analysis. Selecting an issue or
+annotation focuses its page and source region; **Fit** returns to the complete sheet. On narrow
+screens, the issue selector and details sit below the drawing, which remains visible.
 
-- Real multi-page PDF rendering, zoom, drag-to-pan, fit, and page selection.
-- Numbered annotations stored as normalized page coordinates. Markers, issue cards, and the
-  details panel share one selection; selecting a finding focuses its source page and region.
-- Evidence, explicit measurements, rule ID, profile threshold, manufacturing implication,
-  suggested review, and uncertainty for each sample finding.
-- Severity/status filters, next/previous issue, addressed/dismissed/reopen decisions.
-- Validated PDF uploads: extension, MIME when supplied, signature, 25 MB limit, parseability,
-  unlocked documents, and a maximum of 100 pages. Errors appear in the upload dialog.
-- Optional STEP Part 21 attachments up to 50 MB. They are stored only; no 3D analysis occurs.
-- Account-owned analysis history in Supabase, with PDF/STEP files cached in account-scoped IndexedDB.
-- Editable material and demo tooling thresholds. Profile updates rerun confirmed-input rules and reset
-  review decisions for those regenerated findings.
-- Report preview, browser print / Save as PDF, and structured JSON report download. Reports
-  contain all findings, including filtered-out or dismissed items. Source PDF remains separate.
-- Searchable Projects library with source/status filters, sorting, revisions, and original/revised fixture drawings.
-- Six-check AI drawing review with selectable issue markers, evidence, calculations, engineer
-  confirmation/dismissal and notes. Missing general tolerances use a flagged provisional ISO 2768-m
-  default. Passing tolerances become one low-priority check; tighter-than-fine tolerances remain
-  drawing concerns. AI priorities include an explanation based on the manufacturing impact.
+- Multi-page PDF rendering, zoom, drag-to-pan, automatic fit and page selection.
+- Padded severity annotations: yellow for low, orange for medium and red for high.
+- Read-only issue explanations, drawing evidence, calculations and manufacturing considerations.
+  There are no confirm, resolve, dismiss or issue-status controls on the drawing page.
+- **Analysis notes** retains the six-check coverage, tolerance assumptions and uncertainties.
+- Validated PDF uploads up to 25 MB and 100 pages, plus optional STEP attachments up to 50 MB.
+- Account-owned analysis history in Supabase; PDF/STEP files remain in account-scoped IndexedDB.
+- Report preview, browser print / Save as PDF and JSON export. Historical review data remains in
+  saved analyses for compatibility, but does not control which issues appear in the viewer.
+- Projects with search, sorting and revisions. New accounts start empty; demo entries are excluded.
+- Six-check AI drawing analysis remains unchanged: missing general tolerances use a flagged
+  provisional ISO 2768-m default; passing tolerances form one low-priority check. Each issue keeps
+  its evidence and priority explanation.
+- Manufacturer matching services and profiles remain in the application, with no integration on
+  the drawing analysis page.
 
 ## Real versus fixture-backed analysis
 
-The viewer, upload validation, local persistence, configurable deterministic checks, review
-workflow, and exports are real. **AI drawing review is connected for selected pages.**
+The viewer, upload validation, account persistence, issue inspection and exports are real. **AI drawing review is connected for selected pages.**
 
 The sample uses authored inputs that correspond to explicit callouts on the included schematic
 PDFs. “Verified” means checked against the authored fixture, not independently validated CAD or
-engineer-approved geometry. The UI and reports label the analysis as a sample. Uploading any
-other drawing starts with **zero findings**. Use **Analyse drawing** to generate AI flags directly,
-then inspect the evidence and confirm or dismiss each issue. Uploaded drawings never use recycled sample results.
+engineer-approved geometry. These fixtures are retained for automated tests, but are not seeded into accounts or offered in the UI. Uploading a
+drawing starts with **zero findings**. Use **Analyse drawing** to generate AI flags directly,
+then inspect each issue and its evidence. Uploaded drawings never use recycled sample results.
 
 There is no CAM simulation, tool-access proof, automated redesign, STEP geometry
 parser, shared drawing-file storage, or production certification. Missing specifications are flagged
 for engineer review; unreadable or unsupplied content is recorded as unassessed, not proof of absence.
 
-### Reproducible demo
+### Test drawings
 
-1. From Projects, open the revision A sample: four candidate concerns across two PDF pages.
-2. Select a marker or card, inspect its dimensions and rule, and use fit/zoom/pan.
-3. Select the locating tolerance card to navigate to page 2.
-4. Mark a finding addressed, refresh, reopen it from Projects, and confirm the saved status.
-5. Open Projects → Open revised sample. Revision B changes pocket width/depth, internal radius,
-   and hole diameter/depth; only the locating tolerance still crosses the default profile.
-6. Export the report. Use browser print to save a PDF, or download JSON.
+For manual checks, upload a PDF using **New analysis**, run **Analyse drawing**, and inspect
+its findings in the viewer. Select issues on different pages, use Fit, refresh and reopen the project. Export the report using browser print or JSON download.
 
 The supplied drawings are schematic software fixtures, **not production drawings**. Mechanical
 engineering teammates must supply/validate the actual demo part, its functional requirements,
@@ -312,7 +299,7 @@ and version are attached to findings. No automatic functional-criticality assess
 ## Architecture
 
 ```text
-Server Component supplies typed sample analysis
+Server Component loads account-owned uploaded analyses
   → client drawing workspace
     → PDF.js worker and canvas + normalized annotation overlay
     → shared selection, filters, and review state

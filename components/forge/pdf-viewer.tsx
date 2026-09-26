@@ -48,12 +48,7 @@ export function PdfViewer({
   onSelect,
 }: Props) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
-  const [page, setPage] = useState(
-    () =>
-      allFindings
-        .find((f) => f.id === selectedId)
-        ?.evidence.find((e) => e.region)?.region?.page ?? 1,
-  );
+  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState({
     width: 1000,
     height: 700,
@@ -73,7 +68,7 @@ export function PdfViewer({
     top: number;
   } | null>(null);
   const fit = Math.max(
-    0.08,
+    0.001,
     Math.min(
       (container.width - 72) / pageSize.width,
       (container.height - 72) / pageSize.height,
@@ -227,8 +222,15 @@ export function PdfViewer({
       if (cancelled) return;
       const base = pdfPage.getViewport({ scale: 1 });
       const location = rotatedRegion(region, pdfPage.rotate);
+      const pageFit = Math.max(
+        0.001,
+        Math.min(
+          (container.width - 72) / base.width,
+          (container.height - 72) / base.height,
+        ),
+      );
       const scale = Math.max(
-        fit,
+        pageFit,
         Math.min(
           1.6,
           (container.width * 0.65) / (location.width * base.width),
@@ -447,21 +449,25 @@ export function PdfViewer({
                 pageMarkers.map(({ finding, region, index }) => (
                   <button
                     key={`${finding.id}-${index}`}
-                    className={`drawing-marker severity-${finding.severity} ${selectedId === finding.id ? "is-selected" : ""} ${finding.status !== "open" ? "is-reviewed" : ""}`}
+                    className={`drawing-marker severity-${finding.severity} ${selectedId === finding.id ? "is-selected" : ""}`}
                     style={{
-                      left: `${region.x * 100}%`,
-                      top: `${region.y * 100}%`,
-                      width: `${region.width * 100}%`,
-                      height: `${region.height * 100}%`,
+                      // Screen-space padding stays readable at every zoom level.
+                      // Clamp to the page; the saved evidence coordinates stay exact.
+                      left: `max(0px, calc(${region.x * 100}% - 10px))`,
+                      top: `max(0px, calc(${region.y * 100}% - 10px))`,
+                      right: `max(0px, calc(${(1 - region.x - region.width) * 100}% - 10px))`,
+                      bottom: `max(0px, calc(${(1 - region.y - region.height) * 100}% - 10px))`,
                     }}
                     onClick={() => onSelect(finding.id)}
-                    title={`${finding.ai ? "AI-suggested location · " : ""}${finding.severity} priority · ${finding.status}: ${finding.title}`}
-                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}, ${finding.severity} priority, ${finding.status}${finding.ai ? ", AI-suggested location" : ""}`}
+                    title={`${finding.ai ? "AI-suggested location · " : ""}${finding.severity} priority: ${finding.title}`}
+                    aria-label={`Issue ${allFindings.findIndex((f) => f.id === finding.id) + 1}: ${finding.title}, ${finding.severity} priority${finding.ai ? ", AI-suggested location" : ""}`}
                     aria-pressed={selectedId === finding.id}
                   >
                     <span>
                       <TriangleAlert size={12} aria-hidden="true" />
                       {allFindings.findIndex((f) => f.id === finding.id) + 1}
+                      {" · "}
+                      {finding.severity}
                     </span>
                   </button>
                 ))}
@@ -478,7 +484,7 @@ export function PdfViewer({
         <span>
           <Scan size={13} />{" "}
           {annotations
-            ? `${pageMarkers.length} located findings · AI markers need review`
+            ? `${pageMarkers.length} located issues · AI locations are approximate`
             : "Annotations hidden"}
         </span>
         <span>
