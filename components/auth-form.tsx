@@ -102,9 +102,16 @@ export function AuthForm({
       <Button type="submit" disabled={pending}>
         {pending ? "Please wait…" : label}
       </Button>
-      <p role={state.error ? "alert" : "status"}>
-        {state.error || state.success}
-      </p>
+      {(state.error || state.success) && (
+        <p
+          role={state.error ? "alert" : "status"}
+          className={
+            state.error ? "auth-feedback auth-feedback-error" : "auth-feedback"
+          }
+        >
+          {state.error || state.success}
+        </p>
+      )}
     </form>
   );
 }

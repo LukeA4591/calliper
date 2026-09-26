@@ -354,8 +354,10 @@ async function main() {
         confirmPassword: newPassword,
         role,
       });
+      assert.equal(signup.status, 303);
+      assert.equal(signup.headers.get("location"), "/register/check-email");
       assert.ok(
-        (await signup.text()).includes(
+        (await (await request("/register/check-email")).text()).includes(
           "Check your email for a verification link",
         ),
       );
@@ -394,6 +396,27 @@ async function main() {
       assert.ok(
         (await replay.text()).includes("expired or has already been used"),
       );
+      // A new browser must be able to sign in with a password without any
+      // cookies from email verification or the legacy code flow.
+      cookies.clear();
+      assert.equal((await request("/")).headers.get("location"), "/login");
+      const passwordLogin = await submit(
+        "/login",
+        await (await request("/login")).text(),
+        'form:has(input[name="password"])',
+        { email, password: newPassword },
+      );
+      assert.equal(passwordLogin.status, 303);
+      assert.equal(passwordLogin.headers.get("location"), "/");
+      assert.ok(
+        passwordLogin.headers
+          .getSetCookie()
+          .some((cookie) => cookie.includes("auth-token")),
+      );
+      const destination = role === "manufacturer" ? "/manufacturer" : "/";
+      assert.equal((await request(destination)).status, 200);
+      // A second request also retains the password-created session.
+      assert.equal((await request(destination)).status, 200);
       return { email, id: user.id };
     }
     const manufacturer = await signup("manufacturer");

@@ -2126,6 +2126,36 @@
   margin: 24px 0;
   font-size: 13px;
 }
+.verification-next-steps {
+  max-width: 640px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.auth-feedback {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+.auth-feedback-error {
+  border-left: 3px solid #b23c30;
+}
+.verification-next-steps ol {
+  list-style: decimal;
+  padding-left: 22px;
+  margin-bottom: 24px;
+}
+.verification-next-steps li + li {
+  margin-top: 10px;
+}
+.verification-next-steps > p {
+  color: var(--muted);
+}
+.verification-next-steps details {
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
 .account-page a {
   text-decoration: underline;
   text-underline-offset: 4px;

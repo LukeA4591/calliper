@@ -14,7 +14,7 @@ export async function register(
   const p = signupSchema.safeParse(Object.fromEntries(form));
   if (!p.success) return { error: p.error.issues[0].message };
   const client = await createClient();
-  const { error } = await client.auth.signUp({
+  const { data, error } = await client.auth.signUp({
     email: p.data.email,
     password: p.data.password,
     options: { data: { account_type: p.data.role } },
@@ -24,10 +24,13 @@ export async function register(
       error:
         "Registration could not be completed. Check your details or try again later.",
     };
-  return {
-    success:
-      "Check your email for a verification link. If you already have an account, sign in or reset your password.",
-  };
+  // Hosted projects may have email confirmation disabled. If Supabase issued a
+  // verified session, continue; otherwise give registration a clear next step.
+  if (data.session && data.user?.email_confirmed_at) {
+    revalidatePath("/", "layout");
+    redirect("/");
+  }
+  redirect("/register/check-email");
 }
 export async function login(_: FormState, form: FormData): Promise<FormState> {
   const p = loginSchema.safeParse(Object.fromEntries(form));
@@ -46,8 +49,9 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     return { error: "Verify your email before signing in." };
   }
   revalidatePath("/", "layout");
-  const user = await requireUser();
-  redirect(user.role === "manufacturer" ? "/manufacturer" : "/");
+  // The destination reads the persisted session and routes the verified role.
+  // Don't create another auth client against the login request's cookies here.
+  redirect("/");
 }
 export async function forgotPassword(
   _: FormState,

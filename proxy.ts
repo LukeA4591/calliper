@@ -34,7 +34,7 @@ export const config = {
     "/",
     "/ideas/:path*",
     "/login/:path*",
-    "/register",
+    "/register/:path*",
     "/forgot-password",
     "/reset-password",
     "/auth/:path*",
